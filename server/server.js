@@ -10,7 +10,7 @@ const JWT_SECRET = "DEV_SECRET_CHANGE_LATER";
 
 app.use(cors());
 app.use(express.json());
-
+app.options("*", cors());
 /* =========================
    DATABASE
 ========================= */
