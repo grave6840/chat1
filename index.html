@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NovaChat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- FONTS: basis nu, CSS verfijnt dit later -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- =========================
+     LOGIN SCREEN
+========================= -->
+<div id="loginScreen" class="overlay fullscreen">
+
+  <div class="contact-container">
+
+    <div class="contact-header">
+      <div class="contact-header-left">
+        <div class="contact-icon">👤</div>
+        <div class="contact-header-text">
+          <h2>Welcome</h2>
+          <p>Login or create an account</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-body">
+
+      <div class="contact-section">
+        <h3>Username</h3>
+        <div class="contact-input-wrapper">
+          <input id="loginUsername" placeholder="username" />
+        </div>
+      </div>
+
+      <div class="contact-section">
+        <h3>Code</h3>
+        <div class="contact-input-wrapper">
+          <input id="loginCode" placeholder="code" />
+        </div>
+      </div>
+
+      <div class="contact-section">
+        <button id="loginBtn" class="contact-action-btn">
+          Login
+        </button>
+      </div>
+
+      <div class="contact-section subtle">
+        <button id="signupBtn" class="contact-action-btn">
+          Create new account
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+  <!-- BACKGROUND LAYERS -->
+  <div class="bg-gradient"></div>
+  <div class="bg-noise"></div>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <!-- APP ROOT -->
+  <div class="app-shell" style="display:none;">
+
+
+    <!-- =========================
+         SIDEBAR
+    ========================== -->
+    <aside class="sidebar">
+
+      <!-- BRAND -->
+      <div class="sidebar-top">
+        <div class="brand">
+          <div class="brand-icon"></div>
+          <div class="brand-text">
+            <span class="brand-name">NovaChat</span>
+            <span class="brand-sub">Private messaging</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- USER CARD -->
+    
+
+      <!-- SEARCH -->
+      <section class="sidebar-search">
+        <div class="search-field">
+          <span class="search-icon">⌕</span>
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Search or start a new conversation"
+            autocomplete="off"
+          />
+        </div>
+      </section>
+
+      <!-- CHAT LIST -->
+      <section class="chat-list-section">
+        <div class="chat-list"></div>
+
+        <!-- EMPTY STATE -->
+        <div class="chat-list-empty">
+          <div class="empty-visual">💬</div>
+          <div class="empty-title">No conversations</div>
+          <div class="empty-sub">
+            Start a new chat to see it appear here
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER ACTIONS -->
+<section class="sidebar-footer">
+  <button class="footer-btn settings-btn">
+    <span class="settings-icon">⚙</span>
+    <span class="settings-label">Settings</span>
+  </button>
+
+  <button class="footer-btn add-contact-btn">
+    <span class="settings-icon">➕</span>
+    <span class="settings-label">Add Contact</span>
+  </button>
+</section>
+
+
+
+    </aside>
+
+    <!-- =========================
+         MAIN CHAT AREA
+    ========================== -->
+    <main class="chat-area">
+
+      <!-- HEADER -->
+      <header class="chat-header empty">
+
+        <!-- FILLED BY JS -->
+        <!--
+        <div class="chat-header-left">
+          <div class="chat-avatar-large"></div>
+          <div class="chat-header-text">
+            <div class="chat-title"></div>
+            <div class="chat-subtitle"></div>
+          </div>
+        </div>
+
+        <div class="chat-header-actions">
+          <button class="icon-btn">📞</button>
+          <button class="icon-btn">🎥</button>
+          <button class="icon-btn">⋮</button>
+        </div>
+        -->
+
+      </header>
+
+      <!-- MESSAGES -->
+      <section class="messages empty">
+
+        <!-- EMPTY STATE -->
+        <div class="messages-empty">
+          <div class="empty-visual">📡</div>
+          <div class="empty-title">No messages yet</div>
+          <div class="empty-sub">
+            Send a message to start the conversation
+          </div>
+        </div>
+
+        <!-- MESSAGE TEMPLATE (JS) -->
+        <!--
+        <div class="message outgoing">
+          <div class="message-bubble">
+            <p class="message-text">Hello</p>
+          </div>
+          <div class="message-meta">
+            <span class="message-time">20:31</span>
+          </div>
+        </div>
+        -->
+
+      </section>
+
+      <!-- INPUT -->
+      <footer class="chat-input-area disabled">
+
+        <div class="input-surface">
+
+          <div class="input-actions left">
+            <button class="icon-btn emoji-btn">😊</button>
+            <button class="icon-btn attach-btn">📎</button>
+          </div>
+
+          <div class="input-field-wrapper">
+            <input
+              id="messageInput"
+              type="text"
+              placeholder="Type a message…"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="input-actions right">
+            <button class="send-btn">
+              <span class="send-icon">➤</span>
+            </button>
+          </div>
+
+        </div>
+
+      </footer>
+
+    </main>
+
+  </div>
+
+  <!-- =========================
+     SETTINGS SCREEN (FULL)
+========================= -->
+<div id="settingsScreen" class="overlay fullscreen hidden">
+  <div class="settings-container">
+    <div class="settings-header">
+      <h2>Settings</h2>
+      <button class="icon-btn close-settings">✕</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>Appearance</h3>
+      <div class="settings-item">Theme</div>
+      <div class="settings-item">Dark / Light mode</div>
+      <div class="settings-item">Accent color</div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Chat</h3>
+      <div class="settings-item">Chat background</div>
+      <div class="settings-item">Message density</div>
+      <div class="settings-item">Read receipts</div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Privacy</h3>
+      <div class="settings-item">Chat lock</div>
+      <div class="settings-item">Last seen</div>
+      <div class="settings-item">Blocked contacts</div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================
+     CALL WINDOW
+========================= -->
+<div id="callWindow" class="popup call hidden">
+  <h3>Voice Call</h3>
+  <button class="call-action">Start Call</button>
+</div>
+
+<!-- =========================
+     VIDEO CALL WINDOW
+========================= -->
+<div id="videoWindow" class="popup video hidden">
+  <h3>Video Call</h3>
+  <button class="call-action video">Start Video</button>
+</div>
+
+<!-- =========================
+     CONTACT MENU (3 DOTS)
+========================= -->
+<div id="contactMenu" class="popup menu hidden">
+  <div class="menu-item">View profile</div>
+  <div class="menu-item">Mute notifications</div>
+  <div class="menu-item">Search in chat</div>
+  <div class="menu-item danger">Block contact</div>
+</div>
+
+<!-- =========================
+     ADD CONTACT SCREEN
+========================= -->
+<div id="addContactScreen" class="overlay fullscreen hidden">
+
+  <div class="contact-container">
+
+    <!-- HEADER -->
+    <div class="contact-header">
+      <div class="contact-header-left">
+        <div class="contact-icon">➕</div>
+        <div class="contact-header-text">
+          <h2>Add Contact</h2>
+          <p>Connect using a unique username</p>
+        </div>
+      </div>
+
+      <button class="icon-btn close-add-contact">✕</button>
+    </div>
+
+    <!-- BODY -->
+    <div class="contact-body">
+
+      <!-- INPUT SECTION -->
+      <div class="contact-section">
+        <h3>Username</h3>
+        <p class="contact-hint">
+          Enter a username followed by a unique code
+        </p>
+
+        <div class="contact-input-wrapper">
+          <input
+            type="text"
+            placeholder="username@AB12"
+            autocomplete="off"
+          />
+        </div>
+      </div>
+
+      <!-- PREVIEW / INFO -->
+      <div class="contact-section subtle">
+        <div class="contact-preview">
+          <div class="preview-avatar"></div>
+          <div class="preview-text">
+            <span>No user selected</span>
+            <small>User preview will appear here</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION -->
+      <div class="contact-section">
+        <button class="contact-action-btn">
+          Send Contact Request
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+  <script src="app.js"></script>
+</body>
+</html>
