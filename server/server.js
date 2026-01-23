@@ -3,6 +3,9 @@ import Database from "better-sqlite3";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cors from "cors";
+import { WebSocketServer } from "ws";
+import http from "http";
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -219,6 +222,49 @@ app.get("/messages/:contactTag", auth, (req, res) => {
    START
 ========================= */
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = http.createServer(app);
+
+const wss = new WebSocketServer({ server });
+const clients = new Map();
+
+wss.on("connection", (ws, req) => {
+  ws.on("message", msg => {
+    try {
+      const payload = JSON.parse(msg.toString());
+
+      // eerste bericht = registratie
+      if (payload.type === "register") {
+        clients.set(payload.tag, ws);
+        ws.tag = payload.tag;
+        return;
+      }
+
+      // signaling doorsturen
+      const target = clients.get(payload.to);
+      if (target) {
+        target.send(JSON.stringify(payload));
+      }
+
+    } catch (e) {
+      console.error("WS error:", e);
+    }
+  });
+
+  ws.on("close", () => {
+    if (ws.tag) clients.delete(ws.tag);
+  });
 });
+
+server.listen(PORT, () => {
+  console.log(`HTTP + WS server running on ${PORT}`);
+});
+
+const ws = new WebSocket("wss://chat1-gnea.onrender.com");
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: "register",
+    tag: localStorage.getItem("myTag")
+  }));
+};
+
