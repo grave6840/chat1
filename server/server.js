@@ -36,6 +36,18 @@ db.prepare(`
   )
 `).run();
 
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_tag TEXT,
+    receiver_tag TEXT,
+    text TEXT,
+    timestamp INTEGER
+  )
+`).run();
+
+
 /* =========================
    UTILS
 ========================= */
@@ -122,27 +134,30 @@ app.post("/add-contact", auth, (req, res) => {
   const owner = req.user.tag;
   const { contactTag } = req.body;
 
-  if (owner === contactTag)
-    return res.status(400).json({ error: "Cannot add yourself" });
-
-  const exists = db.prepare(
-    "SELECT 1 FROM users WHERE tag = ?"
-  ).get(contactTag);
-
-  if (!exists)
-    return res.status(404).json({ error: "User not found" });
-
-  try {
-    db.prepare(`
-      INSERT INTO contacts (owner_tag, contact_tag)
-      VALUES (?, ?)
-    `).run(owner, contactTag);
-  } catch {
-    return res.status(400).json({ error: "Already added" });
+  if (!contactTag || owner === contactTag) {
+    return res.status(400).json({ error: "Invalid contact" });
   }
+
+  const exists = db
+    .prepare("SELECT 1 FROM users WHERE tag = ?")
+    .get(contactTag);
+
+  if (!exists) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO contacts (owner_tag, contact_tag)
+    VALUES (?, ?)
+  `);
+
+  // 🔑 SYMMETRISCH TOEVOEGEN
+  insert.run(owner, contactTag);
+  insert.run(contactTag, owner);
 
   res.json({ success: true });
 });
+
 
 /* =========================
    GET CONTACTS
@@ -157,6 +172,48 @@ app.get("/contacts", auth, (req, res) => {
 
   res.json(rows.map(r => r.contact_tag));
 });
+
+app.post("/messages/send", auth, (req, res) => {
+  const sender = req.user.tag;
+  const { to, text } = req.body;
+
+  if (!to || !text) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  const receiverExists = db
+    .prepare("SELECT 1 FROM users WHERE tag = ?")
+    .get(to);
+
+  if (!receiverExists) {
+    return res.status(404).json({ error: "Receiver not found" });
+  }
+
+  db.prepare(`
+    INSERT INTO messages (sender_tag, receiver_tag, text, timestamp)
+    VALUES (?, ?, ?, ?)
+  `).run(sender, to, text, Date.now());
+
+  res.json({ success: true });
+});
+
+app.get("/messages/:contactTag", auth, (req, res) => {
+  const me = req.user.tag;
+  const other = req.params.contactTag;
+
+  const messages = db.prepare(`
+    SELECT sender_tag, receiver_tag, text, timestamp
+    FROM messages
+    WHERE
+      (sender_tag = ? AND receiver_tag = ?)
+      OR
+      (sender_tag = ? AND receiver_tag = ?)
+    ORDER BY timestamp ASC
+  `).all(me, other, other, me);
+
+  res.json(messages);
+});
+
 
 /* =========================
    START
