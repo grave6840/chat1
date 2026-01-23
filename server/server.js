@@ -14,6 +14,19 @@ const JWT_SECRET = "DEV_SECRET_CHANGE_LATER";
 app.use(cors());
 app.use(express.json());
 app.options("*", cors());
+app.use((req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "microphone=(self), camera=(self)"
+  );
+  next();
+});
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+  next();
+});
+
 /* =========================
    DATABASE
 ========================= */
