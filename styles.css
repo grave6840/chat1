@@ -1665,3 +1665,75 @@ input:checked + .slider:before { transform: translateX(20px); }
   color: white;
 }
 
+body {
+  background: radial-gradient(
+    circle at top,
+    var(--orb-1),
+    var(--bg-root)
+  );
+  color: var(--text-main);
+}
+
+.panel,
+.chat-header,
+.chat-input,
+.sidebar,
+.call-card {
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--card-shadow);
+  color: var(--text-main);
+}
+
+.sidebar {
+  background: var(--bg-sidebar);
+  color: var(--text-main);
+}
+
+.sidebar .username,
+.sidebar .chat-name {
+  color: var(--text-main);
+}
+
+.sidebar .chat-preview {
+  color: var(--text-faint);
+}
+
+.message.incoming {
+  background: var(--msg-in);
+  color: var(--text-main);
+}
+
+.message.outgoing {
+  background: var(--accent-gradient);
+  color: var(--msg-out-text);
+}
+
+button.primary,
+.send-btn,
+.call-btn {
+  background: var(--accent-gradient);
+  color: #000;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.call-overlay {
+  background: color-mix(in srgb, var(--bg-root) 80%, black);
+  backdrop-filter: blur(30px);
+}
+
+.call-name {
+  color: var(--text-main);
+}
+
+.call-status {
+  color: var(--text-dim);
+}
+
+
