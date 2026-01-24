@@ -43,9 +43,29 @@
       <div class="contact-section">
         <h3>Code</h3>
         <div class="contact-input-wrapper">
-          <input id="loginCode" placeholder="code" />
+          <input
+  id="userCode"
+  type="text"
+  placeholder="Auto-generated code"
+  class="contact-input-wrapper"
+/>
+
         </div>
       </div>
+
+<div class="contact-section">
+        <h3>Password</h3>
+        <div class="contact-input-wrapper">
+          <input
+  id="loginPassword"
+  type="password"
+  placeholder="password"
+/>
+
+        </div>
+      </div>
+
+
 
       <div class="contact-section">
         <button id="loginBtn" class="contact-action-btn">
@@ -74,7 +94,7 @@
   <div class="bg-orb orb-3"></div>
 
   <!-- APP ROOT -->
-  <div class="app-shell" style="display:none;">
+  <div class="app-shell">
 
 
     <!-- =========================
@@ -146,26 +166,23 @@
     <main class="chat-area">
 
       <!-- HEADER -->
-      <header class="chat-header empty">
+   <header class="chat-header">
+  <div class="chat-header-left">
+    <div class="chat-avatar-large"></div>
 
-        <!-- FILLED BY JS -->
-        <!--
-        <div class="chat-header-left">
-          <div class="chat-avatar-large"></div>
-          <div class="chat-header-text">
-            <div class="chat-title"></div>
-            <div class="chat-subtitle"></div>
-          </div>
-        </div>
+    <div class="chat-header-text">
+      <div class="chat-title"></div>
+      <div class="chat-subtitle"></div>
+    </div>
+  </div>
 
-        <div class="chat-header-actions">
-          <button class="icon-btn">📞</button>
-          <button class="icon-btn">🎥</button>
-          <button class="icon-btn">⋮</button>
-        </div>
-        -->
+  <div class="chat-header-actions">
+    <button class="icon-btn call-btn" title="Voice call">📞</button>
+    <button class="icon-btn video-btn" title="Video call">🎥</button>
+    <button class="icon-btn menu-btn" title="Menu">⋮</button>
+  </div>
+</header>
 
-      </header>
 
       <!-- MESSAGES -->
       <section class="messages empty">
@@ -236,27 +253,155 @@
       <button class="icon-btn close-settings">✕</button>
     </div>
 
-    <div class="settings-section">
-      <h3>Appearance</h3>
-      <div class="settings-item">Theme</div>
-      <div class="settings-item">Dark / Light mode</div>
-      <div class="settings-item">Accent color</div>
-    </div>
+      <div class="settings-content">
 
     <div class="settings-section">
-      <h3>Chat</h3>
-      <div class="settings-item">Chat background</div>
-      <div class="settings-item">Message density</div>
-      <div class="settings-item">Read receipts</div>
+  <h3>Your Profile</h3>
+  <div class="settings-item profile-info">
+    <span id="settingsMyTag">Loading...</span>
+    <small>This is your unique ID</small>
+  </div>
+
+  <!-- Nieuwe sectie: Edit Profile -->
+<div class="settings-section">
+  <h3>Edit Profile</h3>
+  <div class="settings-item profile-edit-container">
+    <div class="edit-avatar-group">
+      <div id="pfpPreview" class="chat-avatar-large"></div>
+      <input type="file" id="profilePicInput" accept="image/*" style="display:none;" onchange="previewProfilePic(this)">
+      <button class="icon-btn" onclick="document.getElementById('profilePicInput').click()">📸</button>
     </div>
 
-    <div class="settings-section">
-      <h3>Privacy</h3>
-      <div class="settings-item">Chat lock</div>
-      <div class="settings-item">Last seen</div>
-      <div class="settings-item">Blocked contacts</div>
+    <div class="contact-input-wrapper" style="margin-top: 15px;">
+      <input type="text" id="editDisplayName" placeholder="Display Name">
+    </div>
+
+    <div class="contact-input-wrapper" style="margin-top: 10px;">
+      <textarea id="editBio" placeholder="Tell something about yourself..." style="width: 100%; background: transparent; border: none; color: white; padding: 10px; outline: none; resize: none;"></textarea>
+    </div>
+
+    <button class="contact-action-btn" style="margin-top: 15px;" onclick="saveProfileData()">Save Changes</button>
+  </div>
+</div>
+  <div class="settings-item danger" onclick="logout()">Logout</div>
+</div>
+
+ <div class="settings-section">
+  <h3>Appearance</h3>
+  <div class="settings-item" onclick="applyTheme('dark')">
+    <strong>Nova Dark</strong>
+    <small>Default futuristic look</small>
+  </div>
+  <div class="settings-item" onclick="applyTheme('light')">
+    <strong>Crystal Light</strong>
+    <small>Clean and bright</small>
+  </div>
+  <div class="settings-item" onclick="applyTheme('midnight')">
+    <strong>OLED Midnight</strong>
+    <small>Pure black and neon</small>
+  </div>
+</div>
+
+  
+<div class="settings-section">
+  <h3>Chat Customization</h3>
+  
+  <!-- Chat Background Upload -->
+  <div class="settings-item">
+    <div class="settings-text">
+      <strong>Achtergrond Afbeelding</strong>
+      <small>Upload een eigen foto voor de chat</small>
+    </div>
+    <div class="settings-actions">
+      <input type="file" id="bgUpload" accept="image/*" style="display: none;" onchange="handleBgUpload(this)">
+      <button class="icon-btn" onclick="document.getElementById('bgUpload').click()">📁</button>
+      <button class="icon-btn danger" onclick="removeChatBackground()">✕</button>
     </div>
   </div>
+
+  <!-- Message Density Slider -->
+  <div class="settings-item density-control">
+    <div class="settings-text">
+      <strong>Bericht Dichtheid</strong>
+      <small>Sleep om de witruimte aan te passen</small>
+    </div>
+    <input 
+      type="range" 
+      id="densitySlider" 
+      min="4" max="40" value="20" 
+      oninput="updateDensity(this.value)"
+    >
+  </div>
+</div>
+
+  <!-- Read Receipts -->
+  <div class="settings-item">
+    <div class="settings-text">
+      <strong>Read Receipts</strong>
+      <small>Laat anderen zien dat je hun bericht hebt gelezen</small>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="readReceiptToggle" onchange="updateReadReceipts(this.checked)" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+
+
+<div class="settings-section">
+  <h3>Privacy & Security</h3>
+
+  <!-- Chat Lock -->
+  <div class="settings-item">
+    <div class="settings-text">
+      <strong>Chat Lock</strong>
+      <small>Vraag om een pincode bij het openen van de app</small>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="lockToggle" onchange="toggleChatLock(this.checked)">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Last Seen -->
+  <div class="settings-item">
+    <div class="settings-text">
+      <strong>Laatst Gezien</strong>
+      <small>Anderen kunnen niet zien wanneer je online bent</small>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="lastSeenToggle" onchange="toggleLastSeen(this.checked)">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Blocked Contacts -->
+  <div class="settings-item blocklist-item">
+    <div class="settings-text">
+      <strong>Geblokkeerde Contacten</strong>
+      <small id="blockedCount">0 personen geblokkeerd</small>
+    </div>
+    <button class="icon-btn" onclick="openBlockManager()">➔</button>
+  </div>
+</div>
+
+<!-- Extra kleine popup voor Block Manager (optioneel, maar netjes) -->
+<div id="blockManager" class="overlay hidden">
+    <div class="contact-container" style="width: 350px;">
+        <div class="contact-header">
+            <h3>Blokkeerlijst</h3>
+            <button class="icon-btn" onclick="closeBlockManager()">✕</button>
+        </div>
+        <div id="blockListArea" style="max-height: 200px; overflow-y: auto; margin: 15px 0;">
+            <!-- Hier komen de namen -->
+        </div>
+        <div class="contact-input-wrapper">
+            <input type="text" id="blockInput" placeholder="username@1234">
+            <button onclick="blockUserFromInput()" style="background: var(--accent); border:none; padding: 5px 10px; border-radius: 8px; margin-top: 5px; cursor: pointer;">Blokkeer</button>
+        </div>
+    </div>
+    </div>
+  </div>
+    </div>
 </div>
 
 <!-- =========================
@@ -289,6 +434,8 @@
      ADD CONTACT SCREEN
 ========================= -->
 <div id="addContactScreen" class="overlay fullscreen hidden">
+  <div id="addContactStatus" class="status-text"></div>
+
 
   <div class="contact-container">
 
@@ -317,6 +464,7 @@
 
         <div class="contact-input-wrapper">
           <input
+            id="actualAddContactInput"         
             type="text"
             placeholder="username@AB12"
             autocomplete="off"

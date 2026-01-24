@@ -1,465 +1,852 @@
-/* =========================================================
-   TEST DATABASE (LOCAL ONLY)
-========================================================= */
+fetch("/contacts")
 
-const TEST_USERS = {
-  "you@YOU1": {
-    username: "you",
-    code: "YOU1",
-    contacts: []
-  },
-  "test@TEST": {
-    username: "test",
-    code: "TEST",
-    contacts: []
-  }
+
+let localStream = null;
+let peerConnection = null;
+
+const ws = new WebSocket(
+  location.protocol === "https:"
+    ? `wss://${location.host}`
+    : `ws://${location.host}`
+);
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: "register",
+    tag: localStorage.getItem("myTag")
+  }));
 };
 
-/* INIT USERS IN LOCALSTORAGE */
-if (!localStorage.getItem("users")) {
-  localStorage.setItem("users", JSON.stringify(TEST_USERS));
-}
 
-
+const rtcConfig = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" }
+  ]
+};
 
 
 const state = {
-  user: { id: "local", name: "You" },
   chats: [],
-  activeChatId: null
+  activeChatId: null,
+  unreadCounts: JSON.parse(localStorage.getItem('unreadCounts') || '{}')
 };
 
+function getCleanUrl(url) {
+  if (!url || url === 'none' || url === '') return null;
+  return url.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+};
+
+
+
+/* =========================
+   DOM REFERENCES
+   ========================= */
+const loginScreen = document.getElementById("loginScreen");
+const appShell = document.querySelector(".app-shell");
+const loginBtn = document.getElementById("loginBtn");
+const signupBtn = document.getElementById("signupBtn");
 const chatListEl = document.querySelector(".chat-list");
 const chatListEmpty = document.querySelector(".chat-list-empty");
 const messagesEl = document.querySelector(".messages");
-const headerEl = document.querySelector(".chat-header");
 const inputArea = document.querySelector(".chat-input-area");
 const input = document.getElementById("messageInput");
 const sendBtn = document.querySelector(".send-btn");
+const addContactBtn = document.querySelector(".add-contact-btn");
+const addContactScreen = document.getElementById("addContactScreen");
+const settingsBtn = document.querySelector(".settings-btn");
+const settingsScreen = document.getElementById("settingsScreen");
+const profileCache = JSON.parse(localStorage.getItem('profileCache') || '{}');
 
-
-/* INIT */
-createChat();
-render();
-
-/* CORE */
-function render() {
-  renderChatList();
-  renderHeader();
-  renderMessages();
-  renderInputState();
+/* =========================
+   AUTH HELPERS
+   ========================= */
+function setAuth(token, tag) {
+  localStorage.setItem("authToken", token);
+  localStorage.setItem("myTag", tag);
+}
+function getAuth() { return localStorage.getItem("authToken"); }
+function authHeaders() {
+  return { "Content-Type": "application/json", "Authorization": "Bearer " + getAuth() };
 }
 
-function createChat() {
-  const id = crypto.randomUUID();
-  state.chats.push({
-    id,
-    title: "New Conversation",
-    messages: [],
-    unread: 0
-  });
-  state.activeChatId = id;
-}
-
-/* CHAT LIST */
-function renderChatList() {
-  chatListEl.innerHTML = "";
-
-  if (!state.chats.length) {
-    chatListEmpty.classList.add("show");
-    return;
+/* =========================
+   APP CORE LOGIC
+   ========================= */
+function enterApp() {
+  const savedPin = localStorage.getItem("app-pin");
+  if (savedPin) {
+    const enteredPin = prompt("Voer je pincode in om NovaChat te openen:");
+    if (enteredPin !== savedPin) {
+      alert("Verkeerde pincode!");
+      return;
+    }
   }
 
-  chatListEmpty.classList.remove("show");
-  chatListEmpty.style.display = "block";
+  loginScreen.classList.add("hidden");
+  loginScreen.style.display = "none";
+  appShell.style.display = "grid"; 
+  appShell.classList.remove("hidden");
+  appShell.classList.add("active");
+
+  loadContacts();
+  console.log("App entered as:", localStorage.getItem("myTag"));
+}
+
+async function loadContacts() {
+  try {
+    const res = await fetch(`${API_BASE}/contacts`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const contacts = await res.json();
+
+    const newChats = contacts.map(tag => {
+      const existing = state.chats.find(c => c.id === tag);
+      return {
+        id: tag,
+        title: tag.split("@")[0],
+        // HEEL BELANGRIJK: Behoud de bestaande berichten en previews
+        messages: existing ? existing.messages : [],
+        lastMessage: existing ? existing.lastMessage : null,
+        pfp: existing ? existing.pfp : null,
+        displayName: existing ? existing.displayName : null
+      };
+    });
+
+    state.chats = newChats;
+    renderChatList();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadMessages(chatId) {
+  const res = await fetch(`${API_BASE}/messages/${chatId}`, { headers: authHeaders() });
+  if (!res.ok) return;
+  const messages = await res.json();
+  
+  const chat = state.chats.find(c => c.id === chatId);
+  if (!chat) return;
+
+  // 1. Bewaar hoeveel berichten we al hadden VOORDAT we de lijst updaten
+  const oldMessageCount = chat.messages.length;
+  const newMessageCount = messages.length;
+
+  // 2. Update de berichtenlijst
+  chat.messages = messages.map(m => ({
+    text: m.text,
+    fromMe: m.sender_tag === localStorage.getItem("myTag"),
+    timestamp: m.timestamp
+  }));
+
+  // 3. Zet het laatste bericht in de preview
+  if (messages.length > 0) {
+    chat.lastMessage = messages[messages.length - 1].text;
+  }
+
+  // 4. Badge logica
+  if (chatId === state.activeChatId) {
+    state.unreadCounts[chatId] = 0;
+    renderMessages();
+  } else if (newMessageCount > oldMessageCount && oldMessageCount > 0) {
+    // Alleen het VERSCHIL toevoegen als we al berichten hadden geladen
+    const diff = newMessageCount - oldMessageCount;
+    state.unreadCounts[chatId] = (state.unreadCounts[chatId] || 0) + diff;
+  } else if (newMessageCount > 0 && oldMessageCount === 0) {
+    // Eerste keer laden? Dan geen badges voor oude berichten
+    state.unreadCounts[chatId] = 0;
+  }
+
+  localStorage.setItem('unreadCounts', JSON.stringify(state.unreadCounts));
+  renderChatList(); 
+}
+
+/* =========================
+   RENDERING & UI
+   ========================= */
+function renderChatList() {
+  chatListEl.innerHTML = "";
+  const myTag = localStorage.getItem("myTag");
+
+  if (state.chats.length === 0) {
+    chatListEmpty.style.display = "block";
+    return;
+  }
   chatListEmpty.style.display = "none";
 
-
-
-  state.chats.forEach(chat => {
+  state.chats.forEach(chatItem => {
     const el = document.createElement("div");
-    el.className = "chat-item" + (chat.id === state.activeChatId ? " active" : "");
-    el.onclick = () => {
-      state.activeChatId = chat.id;
-      render();
-    };
+    el.className = `chat-item ${chatItem.id === state.activeChatId ? "active" : ""}`;
+    el.onclick = () => selectChat(chatItem.id);
+
+    // --- BEPAAL NAAM EN FOTO ---
+    let dName = chatItem.displayName || chatItem.title;
+    let pfpUrl = chatItem.pfp;
+
+    // Als dit mijn eigen profiel is, dwing de lokale data af
+    if (chatItem.id === myTag) {
+      dName = localStorage.getItem('myDisplayName') || dName;
+      pfpUrl = localStorage.getItem('myPFP') || pfpUrl;
+    }
+
+    // Badge logica
+    const unread = state.unreadCounts[chatItem.id] || 0;
+    const badgeHtml = unread > 0 ? `<div class="unread-badge">${unread}</div>` : '';
+
+    // Foto styling
+    let avatarStyle = "";
+    if (pfpUrl && pfpUrl !== 'none') {
+      // Zorg dat de URL schoon in url() staat
+      const cleanUrl = pfpUrl.replace('url("', '').replace('")', '').replace('url(', '').replace(')', '');
+      avatarStyle = `style="background-image: url('${cleanUrl}'); background-size: cover; background-position: center; color: transparent;"`;
+    }
 
     el.innerHTML = `
-      <div class="chat-avatar">${chat.title[0]}</div>
+      <div class="chat-avatar" ${avatarStyle}>${dName[0].toUpperCase()}</div>
       <div class="chat-meta">
-        <div class="chat-name">${chat.title}</div>
-        <div class="chat-preview">
-          ${chat.messages.at(-1)?.text || "No messages yet"}
-        </div>
+        <div class="chat-name">${dName}</div>
+        <div class="chat-preview">${chatItem.lastMessage || 'Click to chat'}</div>
       </div>
+      ${badgeHtml}
     `;
-
     chatListEl.appendChild(el);
   });
 }
 
-/* HEADER */
-function renderHeader() {
-  if (!state.activeChatId) {
-    headerEl.classList.add("empty");
-    headerEl.innerHTML = "";
-    return;
-  }
+function selectChat(chatId) {
+  state.activeChatId = chatId;
 
-  const chat = getChat();
-  headerEl.classList.remove("empty");
-headerEl.innerHTML = `
-  <div class="chat-header-left">
-    <div class="chat-avatar-large"></div>
+  // DIRECT de badge op 0 zetten voor de geselecteerde chat
+  state.unreadCounts[chatId] = 0;
+  localStorage.setItem('unreadCounts', JSON.stringify(state.unreadCounts));
 
-    <div class="chat-header-text">
-      <div class="chat-title">${chat.title}</div>
-      <div class="chat-subtitle">Secure chat · Online</div>
-    </div>
-  </div>
-
-  <div class="chat-header-actions">
-    <button class="icon-btn">📞</button>
-    <button class="icon-btn">🎥</button>
-    <button class="icon-btn">⋮</button>
-  </div>
-`;
-
-}
-
-/* MESSAGES */
-function renderMessages() {
-  messagesEl.innerHTML = "";
-
-  const chat = getChat();
-  if (!chat || !chat.messages.length) {
-    messagesEl.classList.add("empty");
-    messagesEl.innerHTML = `
-      <div class="empty-icon">📡</div>
-      <p>No messages yet</p>
-    `;
-    return;
-  }
-
-  messagesEl.classList.remove("empty");
-
-  chat.messages.forEach(msg => {
-    const el = document.createElement("div");
-    el.className = "message " + (msg.from === "local" ? "outgoing" : "incoming");
-    el.innerHTML = `
-      <div class="bubble">${msg.text}</div>
-      <span class="timestamp">${msg.time}</span>
-    `;
-    messagesEl.appendChild(el);
-  });
-
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-
-/* INPUT */
-function renderInputState() {
-  if (!state.activeChatId) {
-    inputArea.classList.add("disabled");
-    input.disabled = true;
-    sendBtn.disabled = true;
-  } else {
-    inputArea.classList.remove("disabled");
-    input.disabled = false;
-    sendBtn.disabled = false;
-  }
-}
-
-sendBtn.onclick = sendMessage;
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter") sendMessage();
-});
-
-function sendMessage() {
-  const text = input.value.trim();
-  if (!text) return;
-
-  getChat().messages.push({
-    from: "local",
-    text,
-    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  });
-
-  input.value = "";
-  render();
-
-  setTimeout(() => {
-    getChat().messages.push({
-      from: "remote",
-      text: "Received.",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    });
-    render();
-  }, 800);
+  // Direct de lijst verversen zodat het rode bolletje verdwijnt
+  renderChatList();
+  
+  renderChatHeader();
+  renderInputState();
+  loadMessages(chatId);
 }
 
 function getChat() {
   return state.chats.find(c => c.id === state.activeChatId);
 }
 
+function renderChatHeader() {
+  const chat = getChat();
+  const header = document.querySelector(".chat-header");
+  const myTag = localStorage.getItem("myTag");
+  if (!chat || !header) return;
+
+  // Bepaal Display Info
+  let dName = chat.displayName || chat.title;
+  let bioText = chat.bio || "Online";
+  let pfpUrl = chat.pfp;
+
+  if (chat.id === myTag) {
+    dName = localStorage.getItem('myDisplayName') || dName;
+    bioText = localStorage.getItem('myBio') || bioText;
+    pfpUrl = localStorage.getItem('myPFP') || pfpUrl;
+  }
+
+  header.querySelector(".chat-title").textContent = dName;
+  header.querySelector(".chat-subtitle").textContent = bioText;
+  
+  const avatar = header.querySelector(".chat-avatar-large");
+  const cleanUrl = getCleanUrl(pfpUrl);
+  
+  if (avatar) {
+    if (cleanUrl) {
+      avatar.style.backgroundImage = `url('${cleanUrl}')`;
+      avatar.style.backgroundSize = "cover";
+      avatar.style.backgroundPosition = "center";
+      avatar.textContent = '';
+    } else {
+      avatar.style.backgroundImage = 'none';
+      avatar.textContent = dName[0].toUpperCase();
+    }
+  }
+  
+  avatar.style.display = "grid";
+  avatar.style.placeItems = "center";
+  bindHeaderActions();
+}
+
+function bindHeaderActions() {
+
+}
+
+// 2. Verbeterde togglePopup die ALTIJD de juiste knop pakt
+function togglePopup(event, popupId, btnElement) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const popup = document.getElementById(popupId);
+    if (!popup || !btnElement) return;
+
+    // Sluit alle andere popups
+    document.querySelectorAll('.popup').forEach(p => {
+        if (p.id !== popupId) p.classList.add('hidden');
+    });
+
+    const isNowVisible = popup.classList.toggle('hidden') === false;
+
+    if (isNowVisible) {
+        const rect = btnElement.getBoundingClientRect();
+        popup.style.position = 'fixed';
+        popup.style.top = (rect.bottom + 8) + 'px';
+        const rightOffset = window.innerWidth - rect.right;
+        popup.style.right = rightOffset + 'px';
+        popup.style.left = 'auto';
+        popup.style.zIndex = '9999';
+    }
+}
+
+
+function renderMessages() {
+  const chat = getChat();
+  messagesEl.innerHTML = "";
+  if (!chat || !chat.messages.length) {
+    messagesEl.innerHTML = '<div class="messages-empty">No messages yet</div>';
+    return;
+  }
+  chat.messages.forEach(m => {
+    const el = document.createElement("div");
+    el.className = `message ${m.fromMe ? "outgoing" : "incoming"}`;
+    el.innerHTML = `<div class="message-bubble"><p class="message-text">${m.text}</p></div>`;
+    messagesEl.appendChild(el);
+  });
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function renderInputState() {
+  const active = state.activeChatId !== null;
+  input.disabled = !active;
+  sendBtn.disabled = !active;
+  inputArea.classList.toggle("disabled", !active);
+  if (active) input.focus();
+}
+
+/* =========================
+   ACTIONS & SETTINGS
+   ========================= */
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text || !state.activeChatId) return;
+  const res = await fetch(`${API_BASE}/messages/send`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ to: state.activeChatId, text })
+  });
+  if (res.ok) {
+    input.value = "";
+    loadMessages(state.activeChatId);
+  }
+}
+
+function applyTheme(themeName) {
+  document.body.classList.remove('theme-light', 'theme-dark', 'theme-midnight');
+  if (themeName !== 'dark') document.body.classList.add(`theme-${themeName}`);
+  localStorage.setItem('nova-theme', themeName);
+}
+
+function applyAccent(color) {
+  document.documentElement.style.setProperty('--accent', color);
+  localStorage.setItem('nova-accent', color);
+}
+
+function updateDensity(val) {
+  document.documentElement.style.setProperty('--chat-gap', `${val}px`);
+  document.documentElement.style.setProperty('--chat-padding', `${val * 1.5}px`);
+  localStorage.setItem("chat-density-value", val);
+}
+
+function applyChatBackground(url) {
+  if (url) messagesEl.style.backgroundImage = `url('${url}')`;
+  else messagesEl.style.backgroundImage = "none";
+}
+
+/* =========================
+   PRIVACY & SECURITY
+   ========================= */
+function toggleChatLock(isEnabled) {
+    if (isEnabled) {
+        const pin = prompt("Stel een 4-cijferige pincode in:");
+        if (pin && pin.length === 4) {
+            localStorage.setItem("app-pin", pin);
+            alert("Lock enabled.");
+        } else {
+            document.getElementById("lockToggle").checked = false;
+        }
+    } else localStorage.removeItem("app-pin");
+}
+
+function toggleLastSeen(isEnabled) {
+    localStorage.setItem("hide-last-seen", isEnabled);
+}
+
+async function sendContactRequest() {
+    const inputField = document.getElementById("actualAddContactInput");
+    const tag = inputField.value.trim(); // Zorgt dat spaties voor/na de naam weg zijn
+
+    if (!tag || !tag.includes('@')) {
+        return alert("Please enter the full tag: username@1234");
+    }
+
+    console.log("Sending request to add:", tag);
+
+    try {
+        const res = await fetch(`${API_BASE}/add-contact`, {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ contactTag: tag })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            alert("Contact added successfully!");
+            inputField.value = "";
+            document.getElementById("addContactScreen").classList.add("hidden");
+            loadContacts(); // Vernieuw de lijst
+        } else {
+            // De server geeft hier de "User not found" fout
+            console.error("Server returned error:", data);
+            alert("Error: " + (data.error || "Could not add contact"));
+        }
+    } catch (err) {
+        console.error("Network error:", err);
+        alert("Network error. Check your connection or server status.");
+    }
+}
+
+function loadPrivacySettings() {
+    const pin = localStorage.getItem("app-pin");
+    const hideSeen = localStorage.getItem("hide-last-seen") === "true";
+    const receipts = localStorage.getItem("chat-read-receipts") === "true";
+
+    const lockT = document.getElementById("lockToggle");
+    const seenT = document.getElementById("lastSeenToggle");
+    const readT = document.getElementById("readReceiptToggle");
+
+    if (lockT) lockT.checked = (pin !== null && pin !== "");
+    if (seenT) seenT.checked = hideSeen;
+    if (readT) readT.checked = receipts;
+}
+
+/* =========================
+   EVENT LISTENERS (SINGLE SETUP)
+   ========================= */
+
+// Centraal opstartpunt
+window.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('nova-theme');
+  const savedAccent = localStorage.getItem('nova-accent');
+  if (savedTheme) applyTheme(savedTheme);
+  if (savedAccent) applyAccent(savedAccent);
+
+  loadChatSettings();
+  loadPrivacySettings();
+
+  const token = getAuth();
+  if (token) enterApp();
+});
+
+function loadChatSettings() {
+  const savedBg = localStorage.getItem("custom-chat-bg");
+  if (savedBg) applyChatBackground(savedBg);
+
+  const savedDensity = localStorage.getItem("chat-density-value");
+  if (savedDensity) {
+    const slider = document.getElementById("densitySlider");
+    if (slider) slider.value = savedDensity;
+    updateDensity(savedDensity);
+  }
+}
+
 /* =========================================================
-   ANCHORED POPUP LOGIC
+   UI CONTROLLER (DE MASTER FIX)
    ========================================================= */
 
-const callBtn   = document.querySelectorAll(".chat-header-actions .icon-btn")[0];
-const videoBtn  = document.querySelectorAll(".chat-header-actions .icon-btn")[1];
-const menuBtn   = document.querySelectorAll(".chat-header-actions .icon-btn")[2];
+// Luister naar ELKE klik in de app
+document.addEventListener('click', (e) => {
+    const t = e.target;
 
-const callPopup  = document.getElementById("callWindow");
-const videoPopup = document.getElementById("videoWindow");
-const menuPopup  = document.getElementById("contactMenu");
-
-function closeAllPopups() {
-  callPopup.classList.add("hidden");
-  videoPopup.classList.add("hidden");
-  menuPopup.classList.add("hidden");
+    // =========================
+// START VOICE CALL
+// =========================
+if (t.closest('.call-action') && t.closest('#callWindow')) {
+  console.log("📞 Start call clicked");
+  startCall();
+  return;
 }
 
-/* POSITION POPUP FROM BUTTON */
-function openPopupFromButton(btn, popup) {
-  closeAllPopups();
 
-  // eerst zichtbaar maken (maar onzichtbaar)
-  popup.classList.remove("hidden");
-  popup.style.visibility = "hidden";
+    // --- SIGNUP ACTIE (Create New Account) ---
+// --- SIGNUP ACTIE ---
+    if (t.id === 'signupBtn') {
+        e.preventDefault();
+        const u = document.getElementById("loginUsername").value.trim();
+        const p = document.getElementById("loginPassword").value.trim();
 
-  // laat browser layout berekenen
-  requestAnimationFrame(() => {
-    const rect = btn.getBoundingClientRect();
-    const popupWidth = popup.offsetWidth;
+        fetch(`${API_BASE}/signup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: u, password: p })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.token) {
+                // 1. Vul de code-box automatisch in
+                const code = data.tag.split("@")[1];
+                document.getElementById("userCode").value = code;
+                
+                // 2. Sla de boel alvast op
+                setAuth(data.token, data.tag);
+                
+                alert("Account created! Your code is: " + code + ". You can now click Login.");
+            } else {
+                alert("Signup failed: " + (data.error || "Error"));
+            }
+        });
+        return;
+    }
 
-    popup.style.top  = `${rect.bottom + 8}px`;
-    popup.style.left = `${rect.left - popupWidth - 8}px`;
+    // --- LOGIN ACTIE ---
+    if (t.id === 'loginBtn') {
+        e.preventDefault();
+        const u = document.getElementById("loginUsername").value.trim();
+        const c = document.getElementById("userCode").value.trim();
+        const p = document.getElementById("loginPassword").value.trim();
+        
+        // Combineer naam en code
+        let tag = u;
+        if (c && !u.includes('@')) tag = `${u}@${c}`;
 
-    popup.style.visibility = "visible";
+        fetch(`${API_BASE}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tag: tag, password: p })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.token) {
+                setAuth(data.token, data.tag);
+                enterApp();
+            } else {
+                alert("Login failed. Check your username, code and password.");
+            }
+        });
+        return;
+    }
+
+    // 1. SETTINGS (Open/Sluit) met extra beveiliging
+    if (t.closest('.settings-btn')) {
+        console.log("Settings button clicked"); // Debug check
+        const screen = document.getElementById("settingsScreen");
+        
+        if (screen) {
+            try {
+                renderSettingsProfile();
+                loadPrivacySettings();
+            } catch (err) {
+                console.warn("Kleine fout bij laden settings data:", err);
+            }
+            screen.classList.remove("hidden");
+        }
+        return;
+    }
+
+    // 2. SETTINGS SLUITEN
+    if (t.closest('.close-settings')) {
+        document.getElementById("settingsScreen").classList.add("hidden");
+        return;
+    }
+
+    // 3. ADD CONTACT OPENEN (Nu direct werkend!)
+    if (t.closest('.add-contact-btn')) {
+        document.getElementById("addContactScreen").classList.remove("hidden");
+        return;
+    }
+
+    // --- ADD CONTACT ACTIE (De "Send Request" knop zelf) ---
+    if (t.closest('#addContactScreen .contact-action-btn')) {
+        sendContactRequest();
+        return;
+    }
+
+    // --- LOGOUT ACTIE ---
+    if (t.closest('.danger') && t.textContent.includes('Logout')) {
+        if (confirm("Are you sure you want to logout?")) {
+            localStorage.clear();
+            location.reload();
+        }
+        return;
+    }
+
+    if (t.closest('.add-contact-btn')) {
+        const myTag = localStorage.getItem("myTag");
+        document.getElementById("displayMyOwnTag").textContent = myTag; // Toon je eigen ID
+        document.getElementById("addContactScreen").classList.remove("hidden");
+        return;
+
+    }
+    
+    // 4. ADD CONTACT SLUITEN
+    if (t.closest('.close-add-contact')) {
+        document.getElementById("addContactScreen").classList.add("hidden");
+        return;
+    }
+
+    // --- SAVE PROFILE CHANGES ---
+    if (t.closest('.settings-section .contact-action-btn') && t.textContent.includes('Save')) {
+        saveProfileData();
+        return;
+    }
+
+    // 5. HEADER POPUPS (Call, Video, Menu)
+    const callTrigger = t.closest('.call-btn');
+    if (callTrigger) { togglePopupFixed(callTrigger, "callWindow"); return; }
+
+    const videoTrigger = t.closest('.video-btn');
+    if (videoTrigger) { togglePopupFixed(videoTrigger, "videoWindow"); return; }
+
+    const menuTrigger = t.closest('.menu-btn');
+    if (menuTrigger) { togglePopupFixed(menuTrigger, "contactMenu"); return; }
+
+    // 6. SLUIT POPUPS ALS JE ERNAAST KLIKT
+    if (!t.closest('.popup') && !t.closest('.icon-btn')) {
+        document.querySelectorAll('.popup').forEach(p => p.classList.add('hidden'));
+    }
+});
+
+
+// Verbeterde functie voor popups die ALTIJD op de juiste plek verschijnen
+function togglePopupFixed(btn, popupId) {
+    const popup = document.getElementById(popupId);
+    if (!popup) return;
+
+    // Sluit alle andere popups
+    document.querySelectorAll('.popup').forEach(p => {
+        if (p.id !== popupId) p.classList.add('hidden');
+    });
+
+    // Toggle zichtbaarheid
+    const isHidden = popup.classList.toggle('hidden');
+
+    if (!isHidden) {
+        const rect = btn.getBoundingClientRect();
+        popup.style.position = 'fixed';
+        popup.style.top = (rect.bottom + 10) + 'px';
+        popup.style.right = (window.innerWidth - rect.right) + 'px';
+        popup.style.left = 'auto';
+        popup.style.zIndex = '10001';
+    }
+}
+
+
+
+// Zorg dat input werkt
+input.onkeydown = (e) => { if (e.key === "Enter") sendMessage(); };
+if (sendBtn) sendBtn.onclick = sendMessage;
+
+// Interval voor berichten
+function renderSettingsProfile() {
+    // 1. Haal de tag op uit localStorage
+    const myTag = localStorage.getItem("myTag");
+    
+    // 2. Zoek het element in de HTML
+    const tagDisplay = document.getElementById("settingsMyTag");
+    
+    if (tagDisplay) {
+        if (myTag) {
+            tagDisplay.textContent = myTag;
+            console.log("Tag succesvol geladen in settings:", myTag);
+        } else {
+            tagDisplay.textContent = "Tag niet gevonden";
+            console.error("Fout: Geen 'myTag' gevonden in localStorage. Log opnieuw in.");
+        }
+    } else {
+        console.error("Fout: Element #settingsMyTag niet gevonden in de HTML.");
+    }
+}
+
+// --- Profiel Bewerken Functies ---
+
+function previewProfilePic(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('pfpPreview').style.backgroundImage = `url('${e.target.result}')`;
+    document.getElementById('pfpPreview').textContent = ''; // Initialen weghalen
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveProfileData() {
+  const displayName = document.getElementById('editDisplayName').value.trim();
+  const bio = document.getElementById('editBio').value.trim();
+  const pfp = document.getElementById('pfpPreview').style.backgroundImage;
+
+  // 1. Lokaal opslaan
+  if (displayName) localStorage.setItem('myDisplayName', displayName);
+  if (bio) localStorage.setItem('myBio', bio);
+  if (pfp && pfp !== 'none') localStorage.setItem('myPFP', pfp);
+
+  // 2. Naar server sturen zodat anderen het zien
+  try {
+    await fetch(`${API_BASE}/update-profile`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        displayName: displayName,
+        bio: bio,
+        pfp: pfp // Let op: als de foto te groot is, kan de server dit weigeren.
+      })
+    });
+  } catch (err) {
+    console.error("Server profiel update mislukt:", err);
+  }
+
+  alert("Profile updated and synced!");
+  document.getElementById('settingsScreen').classList.add('hidden');
+  renderSettingsProfile();
+}
+
+// Breid de bestaande renderSettingsProfile uit
+const originalRenderSettings = renderSettingsProfile;
+renderSettingsProfile = function() {
+  originalRenderSettings(); // Roep de oude versie aan voor de ID
+
+  // Vul de bewerk-velden in
+  const savedName = localStorage.getItem('myDisplayName');
+  const savedBio = localStorage.getItem('myBio');
+  const savedPFP = localStorage.getItem('myPFP');
+
+  if (savedName) document.getElementById('editDisplayName').value = savedName;
+  if (savedBio) document.getElementById('editBio').value = savedBio;
+  if (savedPFP) {
+    document.getElementById('pfpPreview').style.backgroundImage = savedPFP;
+    document.getElementById('pfpPreview').textContent = '';
+  } else {
+    // Toon initialen als er geen foto is
+    const tag = localStorage.getItem('myTag') || "U";
+    document.getElementById('pfpPreview').textContent = tag[0].toUpperCase();
+  }
+};
+
+// --- Update Chat Header (Zodat je de ander ziet) ---
+
+function renderChatHeader() {
+  const chat = getChat();
+  const header = document.querySelector(".chat-header");
+  if (!chat || !header) return;
+
+  header.querySelector(".chat-title").textContent = chat.displayName || chat.title;
+  header.querySelector(".chat-subtitle").textContent = chat.bio || "Online";
+  
+  const avatar = header.querySelector(".chat-avatar-large");
+  
+  if (chat.pfp && chat.pfp !== 'none') {
+    const imgUrl = chat.pfp.includes('url(') ? chat.pfp : `url(${chat.pfp})`;
+    avatar.style.backgroundImage = imgUrl;
+    avatar.style.backgroundSize = "cover";
+    avatar.textContent = '';
+  } else {
+    avatar.style.backgroundImage = 'none';
+    avatar.textContent = (chat.displayName || chat.title)[0].toUpperCase();
+  }
+  
+  avatar.style.display = "grid";
+  avatar.style.placeItems = "center";
+  bindHeaderActions();
+}
+
+setInterval(() => {
+    if (!getAuth()) return;
+
+    // 1. Ververs contactenlijst (nieuwe mensen)
+    loadContacts(); 
+
+    // 2. Check voor nieuwe berichten in ALLE chats (voor de rode badges)
+    state.chats.forEach(chat => {
+        loadMessages(chat.id);
+    });
+}, 4000); // Elke 5 seconden is genoeg voor een gratis server
+
+function getCleanUrl(url) {
+  if (!url || url === 'none' || url === '') return null;
+  // Verwijder url("..."), url('...') of url(...) en hou alleen de link over
+  return url.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+}
+
+async function initAudio() {
+  console.log("navigator:", window.navigator);
+console.log("mediaDevices:", window.navigator.mediaDevices);
+
+  const md = window.navigator.mediaDevices;
+  if (!md || !md.getUserMedia) {
+    alert("Microfoon wordt niet ondersteund in deze browser/context.");
+    throw new Error("mediaDevices unavailable");
+  }
+
+  localStream = await md.getUserMedia({ audio: true });
+}
+
+
+function createPeer() {
+  peerConnection = new RTCPeerConnection(rtcConfig);
+
+  // audio track toevoegen
+  localStream.getTracks().forEach(track => {
+    peerConnection.addTrack(track, localStream);
   });
-}
 
-
-/* BUTTON EVENTS */
-
-callBtn.onclick = (e) => {
-  e.stopPropagation();
-  openPopupFromButton(callBtn, callPopup);
-};
-
-videoBtn.onclick = (e) => {
-  e.stopPropagation();
-  openPopupFromButton(videoBtn, videoPopup);
-};
-
-menuBtn.onclick = (e) => {
-  e.stopPropagation();
-  openPopupFromButton(menuBtn, menuPopup);
-};
-
-/* CLICK OUTSIDE TO CLOSE */
-document.addEventListener("click", () => {
-  closeAllPopups();
-});
-
-/* PREVENT SELF-CLOSE */
-[callPopup, videoPopup, menuPopup].forEach(popup => {
-  popup.addEventListener("click", e => e.stopPropagation());
-});
-
-const settingsBtn = document.querySelector(".settings-btn");
-const settingsScreen = document.getElementById("settingsScreen");
-
-
-document.querySelector(".close-settings").onclick = () => {
-  settingsScreen.classList.add("hidden");
-};
-
-
-settingsBtn.onclick = (e) => {
-  e.stopPropagation();
-  settingsScreen.classList.remove("hidden");
-};
-
-settingsScreen.addEventListener("click", (e) => {
-  if (e.target === settingsScreen) {
-    settingsScreen.classList.add("hidden");
-  }
-});
-
-const addContactBtn = document.querySelector(".add-contact-btn");
-const addContactScreen = document.getElementById("addContactScreen");
-
-addContactBtn.onclick = (e) => {
-  e.stopPropagation();
-  addContactScreen.classList.remove("hidden");
-};
-
-document.querySelector(".close-add-contact").onclick = () => {
-  addContactScreen.classList.add("hidden");
-};
-
-addContactScreen.addEventListener("click", (e) => {
-  if (e.target === addContactScreen) {
-    addContactScreen.classList.add("hidden");
-  }
-});
-
-/* =========================================================
-   LOGIN / SIGNUP LOGIC
-========================================================= */
-
-const loginScreen = document.getElementById("loginScreen");
-const appShell = document.querySelector(".app-shell");
-
-const loginBtn = document.getElementById("loginBtn");
-const signupBtn = document.getElementById("signupBtn");
-
-let currentUser = null;
-
-/* UTIL */
-function getUsers() {
-  return JSON.parse(localStorage.getItem("users")) || {};
-}
-
-function saveUsers(users) {
-  localStorage.setItem("users", JSON.stringify(users));
-}
-
-function generateCode() {
-  return Math.random().toString(36).substring(2, 6).toUpperCase();
-}
-
-/* LOGIN */
-loginBtn.onclick = () => {
-  const username = document
-    .getElementById("loginUsername")
-    .value.trim()
-    .toLowerCase();
-
-  const code = document
-    .getElementById("loginCode")
-    .value.trim()
-    .toUpperCase();
-
-  const key = `${username}@${code}`;
-  const users = getUsers();
-
-  if (!users[key]) {
-    alert("User not found");
-    return;
-  }
-
-  currentUser = users[key];
-  localStorage.setItem("currentUser", key);
-
-  loginScreen.classList.add("hidden");
-  appShell.style.display = "grid";
-
-  loadContacts();
-};
-
-
-/* SIGNUP */
-signupBtn.onclick = () => {
-  const username = document.getElementById("loginUsername").value.trim();
-  if (!username) {
-    alert("Enter username");
-    return;
-  }
-
-  const users = getUsers();
-  let code, key;
-
-  do {
-    code = generateCode();
-    key = `${username}@${code}`;
-  } while (users[key]);
-
-  users[key] = {
-    username,
-    code,
-    contacts: []
+  // audio ontvangen
+  peerConnection.ontrack = (e) => {
+    const audio = document.createElement("audio");
+    audio.srcObject = e.streams[0];
+    audio.autoplay = true;
   };
 
-  saveUsers(users);
+  // ICE candidates → signaling
+  peerConnection.onicecandidate = e => {
+    if (e.candidate) {
+      sendSignal({
+        type: "ice",
+        candidate: e.candidate
+      });
+    }
+  };
+}
 
-  // AUTO LOGIN NA SIGNUP
-  localStorage.setItem("currentUser", key);
-  currentUser = users[key];
+async function startCall() {
+  await initAudio();
+  createPeer();
 
-  loginScreen.classList.add("hidden");
-  appShell.style.display = "grid";
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
 
-  loadContacts();
-
-  alert(`Account created:\n${key}`);
-};
-
-
-/* =========================================================
-   ADD CONTACT LOGIC
-========================================================= */
-
-const addContactInput = document.querySelector(
-  "#addContactScreen input"
-);
-const addContactBtnAction = document.querySelector(
-  ".contact-action-btn"
-);
-
-addContactBtnAction.onclick = () => {
-  const value = addContactInput.value.trim();
-  const users = getUsers();
-  const currentKey = localStorage.getItem("currentUser");
-
-  if (!users[value]) {
-    alert("User not found");
-    return;
-  }
-
-  if (value === currentKey) {
-    alert("You cannot add yourself");
-    return;
-  }
-
-  const me = users[currentKey];
-
-  if (me.contacts.includes(value)) {
-    alert("Already in contacts");
-    return;
-  }
-
-  me.contacts.push(value);
-  saveUsers(users);
-
-  alert("Contact added");
-  addContactInput.value = "";
-
-  loadContacts();
-};
-
-function loadContacts() {
-  const users = getUsers();
-  const key = localStorage.getItem("currentUser");
-  const me = users[key];
-
-  const list = document.querySelector(".chat-list");
-  list.innerHTML = "";
-
-  me.contacts.forEach(contactKey => {
-    const contact = users[contactKey];
-
-    const div = document.createElement("div");
-    div.className = "chat-item";
-    div.innerHTML = `
-      <div class="chat-avatar">${contact.username[0]}</div>
-      <div class="chat-meta">
-        <div class="chat-name">${contact.username}</div>
-        <div class="chat-preview">${contact.username}@${contact.code}</div>
-      </div>
-    `;
-    list.appendChild(div);
+  sendSignal({
+    type: "offer",
+    offer
   });
 }
+
+async function receiveOffer(offer) {
+  await initAudio();
+  createPeer();
+
+  await peerConnection.setRemoteDescription(offer);
+
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  sendSignal({
+    type: "answer",
+    answer
+  });
+}
+
+
 
