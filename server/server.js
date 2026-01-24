@@ -38,12 +38,6 @@ app.use((req, res, next) => {
   next();
 });
 
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    type: "register",
-    tag: state.myTag
-  }));
-};
 
 
 /* =========================
