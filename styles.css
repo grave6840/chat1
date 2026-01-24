@@ -960,3 +960,295 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 /* --- END OF CSS --- */
+
+/* ==========================================================================
+   NOVA CHAT - PART 3: ULTIMATE POLISH & FIXES
+   Description: Fixes for Add Contact, Light Theme text, and Header alignments.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   11. FIX: LIGHT THEME TEXT VISIBILITY (CRITICAL)
+   -------------------------------------------------------------------------- */
+/* We dwingen zwart/donkere tekst af in Light Mode voor inputs en titels */
+.theme-light input,
+.theme-light textarea,
+.theme-light .chat-title,
+.theme-light .settings-item strong,
+.theme-light .contact-header-text h2,
+.theme-light .call-name {
+    color: #0f172a !important; /* Diep donkerblauw/zwart */
+}
+
+.theme-light .chat-subtitle,
+.theme-light .settings-item small,
+.theme-light .contact-header-text p,
+.theme-light .contact-hint {
+    color: #475569 !important; /* Donkergrijs */
+}
+
+.theme-light .icon-btn {
+    color: #334155;
+}
+.theme-light .icon-btn:hover {
+    background: rgba(0,0,0,0.05);
+    color: #000;
+}
+
+/* --------------------------------------------------------------------------
+   12. HEADER BUTTONS ALIGNMENT (FIXED)
+   -------------------------------------------------------------------------- */
+/* Zorgt dat alle 3 de knoppen exact even groot en uitgelijnd zijn */
+.chat-header-actions .icon-btn {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px;
+    border-radius: 12px; /* Iets minder rond voor een tech-look */
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-left: 4px;
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+.chat-header-actions .icon-btn:hover {
+    background: var(--element-bg-hover);
+    border-color: var(--element-border);
+    transform: translateY(-1px);
+}
+
+/* --------------------------------------------------------------------------
+   13. MENU POPUP (THE 3 DOTS) - PREMIUM LOOK
+   -------------------------------------------------------------------------- */
+/* Dit vervangt de "basic" look van het menu */
+#contactMenu, .popup.menu {
+    position: absolute; /* Zorgt dat hij onder de knop hangt */
+    right: 30px;
+    top: 80px; /* Onder de header */
+    width: 220px;
+    background: rgba(15, 18, 25, 0.95); /* Zeer donker, bijna solid */
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--element-border);
+    border-radius: 16px;
+    padding: 8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    z-index: var(--z-tooltip);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    
+    /* Animatie bij openen */
+    transform-origin: top right;
+    animation: menuOpen 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes menuOpen {
+    from { opacity: 0; transform: scale(0.9) translateY(-10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.menu-item {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.menu-item:hover {
+    background: var(--accent-color);
+    color: #000; /* Zwart op accent kleur */
+    transform: translateX(4px);
+}
+
+.menu-item.danger:hover {
+    background: #ff4757;
+    color: white;
+}
+
+/* --------------------------------------------------------------------------
+   14. EMPTY STATES (MOOIER GEMAAKT)
+   -------------------------------------------------------------------------- */
+.chat-list-empty, .messages-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 40px;
+    opacity: 1; /* Was vaag, nu duidelijk */
+}
+
+.empty-visual {
+    font-size: 4rem;
+    margin-bottom: 24px;
+    opacity: 0.8;
+    filter: drop-shadow(0 0 30px var(--accent-glow));
+    animation: floatVisual 3s ease-in-out infinite;
+}
+
+@keyframes floatVisual {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.empty-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.empty-sub {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    max-width: 240px;
+    line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   15. ADD CONTACT MODAL (VOLLEDIGE OVERHAUL)
+   -------------------------------------------------------------------------- */
+#addContactScreen .contact-container {
+    width: 480px;
+    background: #0f1115; /* Harde achtergrond, geen vage overlay */
+    border: 1px solid var(--element-border);
+    border-radius: 24px;
+    padding: 0; /* Header en body doen de padding */
+    overflow: hidden;
+    box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+}
+
+/* Header strakker */
+#addContactScreen .contact-header {
+    padding: 24px 32px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--element-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#addContactScreen .contact-body {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Input velden in Add Contact */
+#actualAddContactInput {
+    width: 100%;
+    height: 54px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--element-border);
+    border-radius: 14px;
+    padding: 0 20px;
+    font-size: 1rem;
+    color: white;
+    transition: all 0.2s;
+}
+
+#actualAddContactInput:focus {
+    border-color: var(--accent-color);
+    background: rgba(0,0,0,0.5);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+/* Hint text fix */
+.contact-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* --------------------------------------------------------------------------
+   16. SAVE CHANGES BUTTON (SETTINGS) & GENERAL BUTTONS
+   -------------------------------------------------------------------------- */
+.contact-action-btn {
+    width: 100%;
+    height: 50px;
+    border-radius: 14px;
+    border: none;
+    background: var(--accent-gradient);
+    color: #000; /* Zwarte tekst voor contrast */
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 20px var(--accent-glow);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.contact-action-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 30px var(--accent-glow);
+}
+
+.contact-action-btn:active {
+    transform: scale(0.98);
+}
+
+/* --------------------------------------------------------------------------
+   17. IMPROVED CALL ANIMATION (BREATHING EFFECT)
+   -------------------------------------------------------------------------- */
+@keyframes improvedPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.4);
+        border-color: rgba(255,255,255,0.2);
+    }
+    50% {
+        box-shadow: 0 0 0 40px rgba(0, 242, 255, 0);
+        border-color: rgba(0, 242, 255, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 242, 255, 0);
+        border-color: rgba(255,255,255,0.2);
+    }
+}
+
+.call-avatar {
+    /* Overschrijft de oude animatie */
+    animation: improvedPulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    border: 4px solid rgba(255,255,255,0.1);
+}
+
+/* --------------------------------------------------------------------------
+   18. GENERAL MARGIN FIXES
+   -------------------------------------------------------------------------- */
+h3 {
+    margin-bottom: 12px; /* Consistente ruimte onder kopjes */
+}
+
+.settings-section {
+    margin-bottom: 32px; /* Meer ruimte tussen secties */
+}
+
+/* Zorg dat de close buttons in headers er goed uitzien */
+.close-settings, .close-add-contact {
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    display: grid;
+    place-items: center;
+    border: none;
+    cursor: pointer;
+}
+.close-settings:hover, .close-add-contact:hover {
+    background: #ff4757;
+    color: white;
+}
