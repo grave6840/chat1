@@ -1,3 +1,5 @@
+const API_BASE = "";
+
 fetch("/contacts")
 
 
