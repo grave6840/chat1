@@ -1500,3 +1500,113 @@ h3 {
     background: rgba(255, 255, 255, 0.95);
     border-color: rgba(0,0,0,0.1);
 }
+
+/* ==========================================================================
+   NOVA CHAT - PART 5: VISUAL REFINEMENTS & FIXES
+   Description: Softer inputs, fixed call alignment, and premium Light Theme.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   23. HEADER ICONS VISIBILITY FIX
+   -------------------------------------------------------------------------- */
+.chat-header-actions .icon-btn {
+    opacity: 1 !important;
+    visibility: visible !important;
+    color: var(--text-secondary);
+    font-size: 1.3rem !important; /* Iets groter voor duidelijkheid */
+    background: rgba(255, 255, 255, 0.03); /* Subtiele achtergrond */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chat-header-actions .icon-btn:hover {
+    background: var(--element-bg-hover);
+    color: var(--text-primary);
+    transform: scale(1.05);
+}
+
+/* --------------------------------------------------------------------------
+   24. SOFTER & ROUNDER CHAT INPUT
+   -------------------------------------------------------------------------- */
+.input-surface {
+    border-radius: 99px !important; /* Volledige pil-vorm (Full Round) */
+    padding: 6px 10px !important;   /* Iets compacter */
+    background: rgba(20, 22, 28, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 
+        inset 0 2px 4px rgba(0,0,0,0.2), /* Inner shadow voor diepte */
+        0 4px 10px rgba(0,0,0,0.1);      /* Outer shadow voor lift */
+}
+
+/* In Light Theme moet hij eruit zien als "Frosted Glass" */
+.theme-light .input-surface {
+    background: rgba(255, 255, 255, 0.7) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 
+        inset 0 2px 4px rgba(0,0,0,0.05), 
+        0 5px 15px rgba(0,0,0,0.05);
+}
+
+/* --------------------------------------------------------------------------
+   25. CALL SCREEN ICONS (PERFECT ALIGNMENT)
+   -------------------------------------------------------------------------- */
+.call-btn {
+    /* Dit forceert perfecte centrering van het icoon */
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+}
+
+/* Reset de 'before' pseudo-elementen zodat ze niet zweven */
+.call-btn::before {
+    display: block;
+    line-height: 1; /* Cruciaal voor verticale centrering */
+    font-size: 28px !important; /* Consistente grootte */
+    transform: none !important; /* Reset rotaties van vorige versies */
+    filter: none !important;    /* Reset filters */
+}
+
+/* Cleanere Iconen */
+#callMuteBtn::before { content: "🎙️"; font-size: 24px !important; filter: grayscale(1) brightness(200%) !important; }
+#callAcceptBtn::before { content: "📞"; filter: invert(1) !important; }
+#callEndBtn::before { 
+    content: "📞"; 
+    filter: invert(1) !important; 
+    transform: rotate(135deg) !important; /* 'Ophangen' draaiing */
+}
+
+/* Soften the buttons (Minder harde randen) */
+.call-btn {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important; /* Zachtere schaduw */
+}
+.call-btn:active {
+    transform: scale(0.95) !important;
+}
+
+/* --------------------------------------------------------------------------
+   26. LIGHT THEME - COLOR CORRECTION
+   -------------------------------------------------------------------------- */
+/* Vervang de felle blauwe knoppen door "Royal Indigo" in light mode */
+
+.theme-light {
+    /* Nieuwe accentkleur: Diep Indigo/Leisteen */
+    --accent-color: #4f46e5; 
+    --accent-gradient: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    --accent-glow: rgba(79, 70, 229, 0.3);
+}
+
+/* Specifieke fix voor de Call/Video/Contact knoppen in Light Theme */
+.theme-light .contact-action-btn,
+.theme-light .send-btn,
+.theme-light #callWindow .call-action,
+.theme-light #addContactScreen .contact-action-btn {
+    background: var(--accent-gradient) !important;
+    color: #fff !important; /* Altijd wit op de gekleurde knop */
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4) !important;
+}
+
+/* Zorg dat de Save Changes knop ook meegaat */
+.theme-light .contact-action-btn:hover {
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6) !important;
+}
