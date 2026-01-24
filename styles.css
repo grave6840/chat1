@@ -95,11 +95,15 @@ html, body {
    ========================================================= */
 
 body {
-  background: var(--bg-root);
+  background: radial-gradient(circle at top, #1a1c25, #0b0c10);
   color: var(--text-main);
   /* This subtle shadow ensures white-tinted text is readable everywhere */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  height: 100vh;
+  margin: 0;
+
 }
 
 .app-shell {
@@ -179,6 +183,21 @@ body {
 .sidebar {
   background: var(--bg-sidebar);
   border-right: 1px solid var(--glass-border);
+  :root {
+  --bg: #0e0f14;
+  --panel: rgba(255,255,255,0.06);
+  --blur: blur(20px);
+  --accent: #4f9cff;
+  --text: #ffffff;
+  --muted: rgba(255,255,255,0.6);
+}
+
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+}
+
+
 }
 
 /* High-end Message Bubbles */
@@ -236,6 +255,13 @@ body {
   background: var(--glass-border);
   border-radius: 10px;
 }
+
+#appShell {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100vh;
+}
+
 
 /* ---------- BACKGROUND ---------- */
 
@@ -308,11 +334,11 @@ body {
   display: flex;
   flex-direction: column;
   padding: 26px;
-  background: linear-gradient(
-    180deg,
-    rgba(0,0,0,0.45),
-    rgba(0,0,0,0.15)
-  );
+  background: var(--panel);
+  backdrop-filter: var(--blur);
+  padding: 20px;
+  gap: 20px;
+
 }
 
 /* BRAND */
@@ -371,6 +397,33 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f9cff, #7a5cff);
+}
+
+.avatar.small {
+  width: 36px;
+  height: 36px;
+}
+
+.search input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: white;
 }
 
 /* SEARCH */
@@ -522,10 +575,32 @@ body {
 
 .chat-header {
   padding: 22px 28px;
+  background: var(--panel);
+  backdrop-filter: var(--blur);
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.chat-user {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.chat-user .status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chat-actions .icon-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 18px;
+  margin-left: 10px;
+  cursor: pointer;
 }
 
 .chat-header-left {
@@ -601,7 +676,7 @@ body {
 .messages {
   flex: 1;
   min-height: 0;
-  padding: 36px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: var(--chat-padding);
@@ -692,10 +767,21 @@ body {
    ========================================================= */
 
 .chat-input-area {
+  display: flex;
   padding: 22px 28px;
   border-top: 1px solid rgba(255,255,255,0.06);
-  background: rgba(0,0,0,0.25);
+  background: var(--panel);
+  backdrop-filter: var(--blur);
   flex-shrink: 0;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: white;
 }
 
 .chat-input-area.disabled {
@@ -739,6 +825,8 @@ body {
 }
 
 .send-btn {
+  margin-left: 12px;
+  font-weight: 600;
   width: 42px;
   height: 42px;
   border-radius: 50%;
@@ -1503,6 +1591,29 @@ input:checked + .slider:before { transform: translateX(20px); }
   color: white;
 }
 
+#callScreen {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(30px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.call-overlay.hidden {
+  display: none;
+}
+
+.call-card {
+  background: rgba(255,255,255,0.08);
+  padding: 40px;
+  border-radius: 30px;
+  text-align: center;
+  width: 300px;
+}
+
 .call-avatar {
   width: 120px;
   height: 120px;
@@ -1552,3 +1663,4 @@ input:checked + .slider:before { transform: translateX(20px); }
   background: #ff3b3b;
   color: white;
 }
+
