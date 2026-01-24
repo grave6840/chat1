@@ -857,6 +857,13 @@ async function initAudio() {
   console.log("navigator:", window.navigator);
 console.log("mediaDevices:", window.navigator.mediaDevices);
 
+localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+localStream.getTracks().forEach(track => {
+  peerConnection.addTrack(track, localStream);
+});
+
+
   const md = window.navigator.mediaDevices;
   if (!md || !md.getUserMedia) {
     alert("Microfoon wordt niet ondersteund in deze browser/context.");
@@ -878,21 +885,22 @@ function createPeer() {
   // audio ontvangen
   peerConnection.ontrack = (e) => {
   const audio = document.getElementById("remoteAudio");
-  audio.srcObject = e.streams[0];
+  audio.srcObject = event.streams[0];
 };
 
 
   // ICE candidates → signaling
-peerConnection.onicecandidate = e => {
+peerConnection.onicecandidate = (e) => {
   if (e.candidate) {
     sendSignal({
       type: "ice",
-      from: localStorage.getItem("myTag"),
+      from: state.myTag,
       to: activeCallWith,
       candidate: e.candidate
     });
   }
 };
+
 
 }
 
