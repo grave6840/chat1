@@ -1604,6 +1604,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 .call-overlay.hidden {
   display: none;
+  pointer-events: none;
 }
 
 .call-card {

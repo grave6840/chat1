@@ -1,5 +1,4 @@
-const API_BASE = "https://chat1-gnea.onrender.com";
-
+const API_BASE = "";
 
 
 
@@ -605,6 +604,7 @@ if (t.closest('.call-action') && t.closest('#callWindow')) {
 // --- LOGIN ACTIE ---
 if (t.id === 'loginBtn') {
   e.preventDefault();
+  e.stopPropagation();
 
   const u = document.getElementById("loginUsername").value.trim();
   const c = document.getElementById("userCode").value.trim();
