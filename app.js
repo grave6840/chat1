@@ -46,6 +46,21 @@ ws.onmessage = async (event) => {
   }
 
   // =========================
+// ICE CANDIDATE
+// =========================
+if (payload.type === "ice") {
+  if (peerConnection && payload.candidate) {
+    try {
+      await peerConnection.addIceCandidate(payload.candidate);
+    } catch (err) {
+      console.error("ICE error:", err);
+    }
+  }
+  return;
+}
+
+
+  // =========================
   // CALL END
   // =========================
   if (payload.type === "call-end") {
@@ -862,20 +877,23 @@ function createPeer() {
 
   // audio ontvangen
   peerConnection.ontrack = (e) => {
-    const audio = document.createElement("audio");
-    audio.srcObject = e.streams[0];
-    audio.autoplay = true;
-  };
+  const audio = document.getElementById("remoteAudio");
+  audio.srcObject = e.streams[0];
+};
+
 
   // ICE candidates → signaling
-  peerConnection.onicecandidate = e => {
-    if (e.candidate) {
-      sendSignal({
-        type: "ice",
-        candidate: e.candidate
-      });
-    }
-  };
+peerConnection.onicecandidate = e => {
+  if (e.candidate) {
+    sendSignal({
+      type: "ice",
+      from: localStorage.getItem("myTag"),
+      to: activeCallWith,
+      candidate: e.candidate
+    });
+  }
+};
+
 }
 
 async function startCall() {
