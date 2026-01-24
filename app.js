@@ -1,6 +1,6 @@
 const API_BASE = "";
 
-fetch("/contacts")
+
 
 
 
@@ -882,7 +882,7 @@ async function startCall() {
   callState = "outgoing";
   activeCallWith = state.activeChatId;
 
-  showCallScreen(state.activeChatName, "Calling…");
+  showCallScreen(activeCallWith, "Calling…"); // Fix: gebruik activeCallWith
 
   await initAudio();
   createPeer();
@@ -890,13 +890,13 @@ async function startCall() {
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
 
-sendSignal({
-  type: "call-offer",
-  from: localStorage.getItem("myTag"),
-  to: activeCallWith,
-  offer
-});
-
+  sendSignal({
+    type: "call-offer",
+    from: localStorage.getItem("myTag"),
+    to: activeCallWith,
+    offer
+  });
+} // <--- DEZE MASSIF ONTBRAK
 
 async function receiveOffer(offer) {
   await initAudio();
@@ -941,14 +941,14 @@ document.getElementById("callAcceptBtn").onclick = async () => {
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
 
-sendSignal({
-  type: "call-answer",
-  from: localStorage.getItem("myTag"),
-  to: activeCallWith,
-  answer
-});
-
-
+  // DEZE MOET HIERBINNEN:
+  sendSignal({
+    type: "call-answer",
+    from: localStorage.getItem("myTag"),
+    to: activeCallWith,
+    answer
+  });
+};
 
 document.getElementById("callEndBtn").onclick = () => {
   if (peerConnection) peerConnection.close();
@@ -959,18 +959,19 @@ document.getElementById("callEndBtn").onclick = () => {
     localStream = null;
   }
 
+  // Stuur signaal VOORDAT we de variabelen leegmaken
+  sendSignal({
+    type: "call-end",
+    from: localStorage.getItem("myTag"),
+    to: activeCallWith
+  });
+
   callState = "idle";
   activeCallWith = null;
-
   hideCallScreen();
-
- sendSignal({
-  type: "call-end",
-  from: localStorage.getItem("myTag"),
-  to: activeCallWith
-});
-
 };
+
+
 
 
 
