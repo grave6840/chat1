@@ -924,7 +924,7 @@ body {
 }
 
 .hidden {
-  display: none;
+  display: none; !important!
 }
 
 /* FULLSCREEN SETTINGS */
@@ -1591,7 +1591,7 @@ input:checked + .slider:before { transform: translateX(20px); }
   color: white;
 }
 
-#callScreen {
+.callScreen {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.85);

@@ -11,6 +11,12 @@ let callState = "idle";
 
 let activeCallWith = null;
 
+document.addEventListener("DOMContentLoaded", () => {
+  const call = document.getElementById("callScreen");
+  if (call) call.classList.add("hidden");
+});
+
+
 
 const ws = new WebSocket(
   location.protocol === "https:"
@@ -155,6 +161,9 @@ function authHeaders() {
    APP CORE LOGIC
    ========================= */
 function enterApp() {
+  callState = "idle";
+hideCallOverlay();
+
   const savedPin = localStorage.getItem("app-pin");
   if (savedPin) {
     const enteredPin = prompt("Voer je pincode in om NovaChat te openen:");
@@ -917,6 +926,7 @@ function createPeer() {
 
 
 async function startCall() {
+  if (callState !== "idle") return;
   callState = "outgoing";
   activeCallWith = state.activeChatId;
   console.log("CALL FROM", state.myTag, "TO", activeCallWith);
@@ -990,7 +1000,8 @@ document.getElementById("callAcceptBtn").onclick = async () => {
   });
 };
 
-document.getElementById("callEndBtn").onclick = () => {
+document.getElementById("callEndBtn").onclick = (e) => {
+   e.stopPropagation();
   if (peerConnection) peerConnection.close();
   peerConnection = null;
 
@@ -1010,6 +1021,13 @@ document.getElementById("callEndBtn").onclick = () => {
   activeCallWith = null;
   hideCallScreen();
 };
+
+document.getElementById("callMuteBtn").onclick = (e) => {
+  e.stopPropagation(); // 🔴 BELANGRIJK
+
+  toggleMute();
+};
+
 
 
 
