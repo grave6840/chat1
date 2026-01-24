@@ -83,6 +83,15 @@ function getCleanUrl(url) {
   return url.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
 };
 
+function sendSignal(payload) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket not connected, cannot send signal");
+    return;
+  }
+
+  ws.send(JSON.stringify(payload));
+}
+
 
 
 
@@ -881,12 +890,13 @@ async function startCall() {
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
 
-  sendSignal({
-    type: "call-offer",
-    to: activeCallWith,
-    offer
-  });
-}
+sendSignal({
+  type: "call-offer",
+  from: localStorage.getItem("myTag"),
+  to: activeCallWith,
+  offer
+});
+
 
 async function receiveOffer(offer) {
   await initAudio();
@@ -931,12 +941,12 @@ document.getElementById("callAcceptBtn").onclick = async () => {
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
 
-  sendSignal({
-    type: "call-answer",
-    to: activeCallWith,
-    answer
-  });
-};
+sendSignal({
+  type: "call-answer",
+  from: localStorage.getItem("myTag"),
+  to: activeCallWith,
+  answer
+});
 
 
 
@@ -954,11 +964,11 @@ document.getElementById("callEndBtn").onclick = () => {
 
   hideCallScreen();
 
-  sendSignal({
-    type: "call-end",
-    to: state.activeChatId
-  });
-};
+ sendSignal({
+  type: "call-end",
+  from: localStorage.getItem("myTag"),
+  to: activeCallWith
+});
 
 
 
