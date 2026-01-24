@@ -248,31 +248,32 @@ app.get("*", (req, res) => {
    START
 ========================= */
 
-const server = http.createServer(app);
+/* =========================
+   START
+========================= */
 
+const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
+
 const clients = new Map();
 
-wss.on("connection", (ws, req) => {
-  ws.on("message", msg => {
+wss.on("connection", (ws) => {
+  ws.on("message", (msg) => {
     try {
       const payload = JSON.parse(msg.toString());
 
-      // eerste bericht = registratie
       if (payload.type === "register") {
-        clients.set(payload.tag, ws);
         ws.tag = payload.tag;
+        clients.set(payload.tag, ws);
         return;
       }
 
-      // signaling doorsturen
       const target = clients.get(payload.to);
       if (target) {
         target.send(JSON.stringify(payload));
       }
-
-    } catch (e) {
-      console.error("WS error:", e);
+    } catch (err) {
+      console.error("WS error:", err);
     }
   });
 
@@ -285,41 +286,4 @@ server.listen(PORT, () => {
   console.log(`HTTP + WS server running on ${PORT}`);
 });
 
-
-const ws = new WebSocket(
-  location.protocol === "https:"
-    ? `wss://${location.host}`
-    : `ws://${location.host}`
-);
-
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    type: "register",
-    tag: localStorage.getItem("myTag")
-  }));
-};
-
-const clients = new Map();
-
-wss.on("connection", (ws) => {
-  ws.on("message", msg => {
-    const data = JSON.parse(msg.toString());
-
-    if (data.type === "register") {
-      ws.tag = data.tag;
-      clients.set(data.tag, ws);
-      return;
-    }
-
-    // signaling doorsturen
-    const target = clients.get(data.to);
-    if (target) {
-      target.send(JSON.stringify(data));
-    }
-  });
-
-  ws.on("close", () => {
-    if (ws.tag) clients.delete(ws.tag);
-  });
-});
 
