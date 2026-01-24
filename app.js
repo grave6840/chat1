@@ -592,43 +592,43 @@ if (t.closest('.call-action') && t.closest('#callWindow')) {
         return;
     }
 
-    // --- LOGIN ACTIE ---
-    if (t.id === 'loginBtn') {
-        e.preventDefault();
-        const u = document.getElementById("loginUsername").value.trim();
-        const c = document.getElementById("userCode").value.trim();
-        const p = document.getElementById("loginPassword").value.trim();
-        
-        // Combineer naam en code
-        let tag = u;
-        if (c && !u.includes('@')) tag = `${u}@${c}`;
+// --- LOGIN ACTIE ---
+if (t.id === 'loginBtn') {
+  e.preventDefault();
 
-        fetch(`${API_BASE}/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tag: tag, password: p })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.token) {
-                setAuth(data.token, data.tag);
-                enterApp();
-                .then(data => {
-  if (data.token) {
-    setAuth(data.token, data.tag);
-    enterApp();
-    registerWS(); // ✅ HIER
-  } else {
-    alert("Login failed.");
-  }
-});
+  const u = document.getElementById("loginUsername").value.trim();
+  const c = document.getElementById("userCode").value.trim();
+  const p = document.getElementById("loginPassword").value.trim();
 
-            } else {
-                alert("Login failed. Check your username, code and password.");
-            }
-        });
+  let tag = u;
+  if (c && !u.includes('@')) tag = `${u}@${c}`;
+
+  fetch(`${API_BASE}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tag, password: p })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.token) {
+        alert("Login failed. Check your username, code and password.");
         return;
-    }
+      }
+
+      setAuth(data.token, data.tag);
+      enterApp();
+
+      // ✅ REGISTREER WEBSOCKET PAS NA LOGIN
+      registerWS();
+    })
+    .catch(err => {
+      console.error("Login error:", err);
+      alert("Login failed due to a network or server error.");
+    });
+
+  return;
+}
+
 
     // 1. SETTINGS (Open/Sluit) met extra beveiliging
     if (t.closest('.settings-btn')) {
