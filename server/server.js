@@ -10,6 +10,14 @@ import http from "http";
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = "DEV_SECRET_CHANGE_LATER";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(express.static(path.join(__dirname, "public")));
+
 
 app.use(cors());
 app.use(express.json());
@@ -229,6 +237,11 @@ app.get("/messages/:contactTag", auth, (req, res) => {
 
   res.json(messages);
 });
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 
 
 /* =========================
