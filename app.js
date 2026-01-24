@@ -162,7 +162,7 @@ function authHeaders() {
    ========================= */
 function enterApp() {
   callState = "idle";
-hideCallOverlay();
+hideCallScreen();
 
   const savedPin = localStorage.getItem("app-pin");
   if (savedPin) {
