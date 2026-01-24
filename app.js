@@ -253,17 +253,32 @@ async function loadMessages(chatId) {
 /* =========================
    RENDERING & UI
    ========================= */
-function renderChatList() {
+/* =========================
+   UPDATED: RENDER CHAT LIST (MET ZOEKONDERSTEUNING)
+   ========================= */
+
+// 1. Pas de functie aan zodat hij een argument accepteert
+function renderChatList(chatsToRender = state.chats) {
   chatListEl.innerHTML = "";
   const myTag = localStorage.getItem("myTag");
 
-  if (state.chats.length === 0) {
-    chatListEmpty.style.display = "block";
+  // Als er geen chats zijn in de gefilterde lijst
+  if (chatsToRender.length === 0) {
+    // Check of we aan het zoeken zijn of dat het echt leeg is
+    const isSearching = document.getElementById("searchInput")?.value.length > 0;
+    
+    if (isSearching) {
+       chatListEmpty.style.display = "none"; // Verberg de "No conversations" placeholder
+       chatListEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-secondary);">No results found</div>`;
+    } else {
+       chatListEmpty.style.display = "block";
+    }
     return;
   }
+  
   chatListEmpty.style.display = "none";
 
-  state.chats.forEach(chatItem => {
+  chatsToRender.forEach(chatItem => {
     const el = document.createElement("div");
     el.className = `chat-item ${chatItem.id === state.activeChatId ? "active" : ""}`;
     el.onclick = () => selectChat(chatItem.id);
@@ -285,8 +300,7 @@ function renderChatList() {
     // Foto styling
     let avatarStyle = "";
     if (pfpUrl && pfpUrl !== 'none') {
-      // Zorg dat de URL schoon in url() staat
-      const cleanUrl = pfpUrl.replace('url("', '').replace('")', '').replace('url(', '').replace(')', '');
+      const cleanUrl = pfpUrl.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
       avatarStyle = `style="background-image: url('${cleanUrl}'); background-size: cover; background-position: center; color: transparent;"`;
     }
 
@@ -300,6 +314,23 @@ function renderChatList() {
     `;
     chatListEl.appendChild(el);
   });
+}
+
+// 2. Voeg de Event Listener toe (Plak dit direct onder de functie hierboven)
+const searchInput = document.getElementById("searchInput");
+if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+        const term = e.target.value.toLowerCase();
+        
+        // Filter de chats op naam of username
+        const filteredChats = state.chats.filter(chat => {
+            const name = (chat.displayName || chat.title).toLowerCase();
+            return name.includes(term);
+        });
+
+        // Render alleen de gefilterde lijst
+        renderChatList(filteredChats);
+    });
 }
 
 function selectChat(chatId) {
@@ -773,46 +804,67 @@ function renderSettingsProfile() {
 
 // --- Profiel Bewerken Functies ---
 
+/* =========================
+   UPDATED: SETTINGS & PROFILE LOGIC
+   ========================= */
+
+// Deze functie wordt aangeroepen zodra je op "Settings" klikt
+function renderSettingsProfile() {
+    console.log("Loading settings profile...");
+
+    // 1. Haal opgeslagen data op
+    const myTag = localStorage.getItem("myTag");
+    const savedName = localStorage.getItem('myDisplayName');
+    const savedBio = localStorage.getItem('myBio');
+    const savedPFP = localStorage.getItem('myPFP');
+
+    // 2. Vul de Tag (ID) in (Tekst)
+    const tagDisplay = document.getElementById("settingsMyTag");
+    if (tagDisplay) tagDisplay.textContent = myTag || "Unknown";
+
+    // 3. Vul de Inputs in (zodat je ze kunt bewerken)
+    const nameInput = document.getElementById('editDisplayName');
+    const bioInput = document.getElementById('editBio');
+    if (nameInput) nameInput.value = savedName || "";
+    if (bioInput) bioInput.value = savedBio || "";
+
+    // 4. Update de Preview Cirkel (Grote Avatar in Settings)
+    const previewEl = document.getElementById('pfpPreview');
+    if (previewEl) {
+        if (savedPFP && savedPFP !== 'none') {
+            const cleanUrl = savedPFP.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+            previewEl.style.backgroundImage = `url('${cleanUrl}')`;
+            previewEl.style.backgroundSize = "cover";
+            previewEl.style.backgroundPosition = "center";
+            previewEl.textContent = ''; // Geen letter tonen
+        } else {
+            // Geen foto? Toon letter
+            previewEl.style.backgroundImage = 'none';
+            previewEl.textContent = myTag ? myTag[0].toUpperCase() : "U";
+            // Zorg dat de letter gecentreerd staat
+            previewEl.style.display = "grid";
+            previewEl.style.placeItems = "center";
+            previewEl.style.fontSize = "2rem";
+            previewEl.style.fontWeight = "bold";
+        }
+    }
+}
+
+// Functie om direct een preview te zien als je een bestand kiest
 function previewProfilePic(input) {
   const file = input.files[0];
   if (!file) return;
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    document.getElementById('pfpPreview').style.backgroundImage = `url('${e.target.result}')`;
-    document.getElementById('pfpPreview').textContent = ''; // Initialen weghalen
+    const previewEl = document.getElementById('pfpPreview');
+    // Zet de nieuwe image direct als achtergrond
+    previewEl.style.backgroundImage = `url('${e.target.result}')`;
+    previewEl.style.backgroundSize = "cover";
+    previewEl.style.backgroundPosition = "center";
+    previewEl.textContent = ''; 
   };
   reader.readAsDataURL(file);
-}
-
-async function saveProfileData() {
-  const displayName = document.getElementById('editDisplayName').value.trim();
-  const bio = document.getElementById('editBio').value.trim();
-  const pfp = document.getElementById('pfpPreview').style.backgroundImage;
-
-  // 1. Lokaal opslaan
-  if (displayName) localStorage.setItem('myDisplayName', displayName);
-  if (bio) localStorage.setItem('myBio', bio);
-  if (pfp && pfp !== 'none') localStorage.setItem('myPFP', pfp);
-
-  // 2. Naar server sturen zodat anderen het zien
-  try {
-    await fetch(`${API_BASE}/update-profile`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        displayName: displayName,
-        bio: bio,
-        pfp: pfp // Let op: als de foto te groot is, kan de server dit weigeren.
-      })
-    });
-  } catch (err) {
-    console.error("Server profiel update mislukt:", err);
-  }
-
-  alert("Profile updated and synced!");
-  document.getElementById('settingsScreen').classList.add('hidden');
-  renderSettingsProfile();
 }
 
 // Breid de bestaande renderSettingsProfile uit
