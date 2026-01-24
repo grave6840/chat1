@@ -3,14 +3,59 @@ const API_BASE = "";
 fetch("/contacts")
 
 
+
 let localStream = null;
 let peerConnection = null;
+let callState = "idle"; 
+// idle | outgoing | incoming | connected
+
+let activeCallWith = null;
+
 
 const ws = new WebSocket(
   location.protocol === "https:"
     ? `wss://${location.host}`
     : `ws://${location.host}`
 );
+
+ws.onmessage = async (event) => {
+  const payload = JSON.parse(event.data);
+
+  // =========================
+  // INCOMING CALL
+  // =========================
+  if (payload.type === "call-offer") {
+    callState = "incoming";
+    activeCallWith = payload.from;
+
+    showCallScreen(payload.from, "Incoming call…");
+    document.getElementById("callAcceptBtn").classList.remove("hidden");
+
+    window.pendingOffer = payload.offer;
+    return;
+  }
+
+  // =========================
+  // CALL ANSWER
+  // =========================
+  if (payload.type === "call-answer") {
+    await peerConnection.setRemoteDescription(payload.answer);
+    callState = "connected";
+    updateCallStatus("Connected");
+    return;
+  }
+
+  // =========================
+  // CALL END
+  // =========================
+  if (payload.type === "call-end") {
+    hideCallScreen();
+    callState = "idle";
+    activeCallWith = null;
+    return;
+  }
+};
+
 
 ws.onopen = () => {
   ws.send(JSON.stringify({
@@ -37,6 +82,8 @@ function getCleanUrl(url) {
   if (!url || url === 'none' || url === '') return null;
   return url.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
 };
+
+
 
 
 
@@ -823,6 +870,11 @@ function createPeer() {
 }
 
 async function startCall() {
+  callState = "outgoing";
+  activeCallWith = state.activeChatId;
+
+  showCallScreen(state.activeChatName, "Calling…");
+
   await initAudio();
   createPeer();
 
@@ -830,7 +882,8 @@ async function startCall() {
   await peerConnection.setLocalDescription(offer);
 
   sendSignal({
-    type: "offer",
+    type: "call-offer",
+    to: activeCallWith,
     offer
   });
 }
@@ -849,6 +902,66 @@ async function receiveOffer(offer) {
     answer
   });
 }
+
+function showCallScreen(name, status) {
+  document.getElementById("callScreen").classList.remove("hidden");
+  document.querySelector(".call-name").textContent = name;
+  document.querySelector(".call-status").textContent = status;
+}
+
+function updateCallStatus(text) {
+  document.querySelector(".call-status").textContent = text;
+}
+
+function hideCallScreen() {
+  document.getElementById("callScreen").classList.add("hidden");
+}
+
+document.getElementById("callAcceptBtn").onclick = async () => {
+  callState = "connected";
+  updateCallStatus("Connected");
+
+  document.getElementById("callAcceptBtn").classList.add("hidden");
+
+  await initAudio();
+  createPeer();
+
+  await peerConnection.setRemoteDescription(window.pendingOffer);
+
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  sendSignal({
+    type: "call-answer",
+    to: activeCallWith,
+    answer
+  });
+};
+
+
+
+document.getElementById("callEndBtn").onclick = () => {
+  if (peerConnection) peerConnection.close();
+  peerConnection = null;
+
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+
+  callState = "idle";
+  activeCallWith = null;
+
+  hideCallScreen();
+
+  sendSignal({
+    type: "call-end",
+    to: state.activeChatId
+  });
+};
+
+
+
 
 
 
