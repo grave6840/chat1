@@ -854,17 +854,8 @@ function getCleanUrl(url) {
 }
 
 async function initAudio() {
-  console.log("navigator:", window.navigator);
-console.log("mediaDevices:", window.navigator.mediaDevices);
-
-localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-localStream.getTracks().forEach(track => {
-  peerConnection.addTrack(track, localStream);
-});
-
-
   const md = window.navigator.mediaDevices;
+
   if (!md || !md.getUserMedia) {
     alert("Microfoon wordt niet ondersteund in deze browser/context.");
     throw new Error("mediaDevices unavailable");
@@ -874,35 +865,37 @@ localStream.getTracks().forEach(track => {
 }
 
 
+
 function createPeer() {
   peerConnection = new RTCPeerConnection(rtcConfig);
 
-  // audio track toevoegen
-  localStream.getTracks().forEach(track => {
-    peerConnection.addTrack(track, localStream);
-  });
-
-  // audio ontvangen
-  peerConnection.ontrack = (e) => {
-  const audio = document.getElementById("remoteAudio");
-  audio.srcObject = event.streams[0];
-};
-
-
-  // ICE candidates → signaling
-peerConnection.onicecandidate = (e) => {
-  if (e.candidate) {
-    sendSignal({
-      type: "ice",
-      from: state.myTag,
-      to: activeCallWith,
-      candidate: e.candidate
+  if (localStream) {
+    localStream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, localStream);
     });
   }
-};
 
+  peerConnection.onicecandidate = (e) => {
+    if (e.candidate) {
+      sendSignal({
+        type: "ice",
+        from: state.myTag,
+        to: activeCallWith,
+        candidate: e.candidate
+      });
+    }
+  };
 
+  peerConnection.ontrack = (event) => {
+    const audio = document.getElementById("remoteAudio");
+    audio.srcObject = event.streams[0];
+  };
 }
+
+
+
+
+
 
 async function startCall() {
   callState = "outgoing";
