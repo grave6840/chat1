@@ -18,6 +18,21 @@ const ws = new WebSocket(
     : `ws://${location.host}`
 );
 
+function registerWS() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+  const tag = localStorage.getItem("myTag");
+  if (!tag) return;
+
+  ws.send(JSON.stringify({
+    type: "register",
+    tag
+  }));
+
+  console.log("WS REGISTERED AS", tag);
+}
+
+
 ws.onmessage = async (event) => {
   const payload = JSON.parse(event.data);
 
@@ -72,12 +87,6 @@ if (payload.type === "ice") {
 };
 
 
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    type: "register",
-    tag: localStorage.getItem("myTag")
-  }));
-};
 
 
 const rtcConfig = {
@@ -604,6 +613,16 @@ if (t.closest('.call-action') && t.closest('#callWindow')) {
             if (data.token) {
                 setAuth(data.token, data.tag);
                 enterApp();
+                .then(data => {
+  if (data.token) {
+    setAuth(data.token, data.tag);
+    enterApp();
+    registerWS(); // ✅ HIER
+  } else {
+    alert("Login failed.");
+  }
+});
+
             } else {
                 alert("Login failed. Check your username, code and password.");
             }
@@ -900,6 +919,8 @@ function createPeer() {
 async function startCall() {
   callState = "outgoing";
   activeCallWith = state.activeChatId;
+  console.log("CALL FROM", state.myTag, "TO", activeCallWith);
+
 
   showCallScreen(activeCallWith, "Calling…"); // Fix: gebruik activeCallWith
 
