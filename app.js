@@ -1,4 +1,5 @@
-const API_BASE = "";
+const API_BASE = "https://chat1-gnea.onrender.com";
+
 
 
 
