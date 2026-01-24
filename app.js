@@ -122,6 +122,83 @@ function sendSignal(payload) {
   ws.send(JSON.stringify(payload));
 }
 
+/* =========================
+   FIX: SAVE PROFILE FUNCTION
+   ========================= */
+
+// Deze functie wordt aangeroepen door de Save Changes knop
+window.saveProfileData = async function() {
+    console.log("Saving profile...");
+    
+    const nameInput = document.getElementById('editDisplayName');
+    const bioInput = document.getElementById('editBio');
+    const previewEl = document.getElementById('pfpPreview');
+    const saveBtn = document.querySelector("#settingsScreen .contact-action-btn");
+
+    if (!nameInput || !bioInput || !previewEl) {
+        console.error("Save failed: Inputs not found");
+        return;
+    }
+
+    // 1. Data ophalen
+    const displayName = nameInput.value.trim();
+    const bio = bioInput.value.trim();
+    
+    // Foto URL netjes maken (verwijder 'url("...")')
+    let pfpRaw = previewEl.style.backgroundImage;
+    if (pfpRaw === 'none' || !pfpRaw) pfpRaw = "";
+    
+    // 2. Lokaal opslaan (Direct zichtbaar resultaat)
+    if (displayName) localStorage.setItem('myDisplayName', displayName);
+    if (bio) localStorage.setItem('myBio', bio);
+    if (pfpRaw) localStorage.setItem('myPFP', pfpRaw);
+
+    // 3. Feedback aan gebruiker (Knop verandert even van tekst)
+    if (saveBtn) {
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = "Saved! ✓";
+        saveBtn.style.background = "#2ecc71"; // Groen
+        saveBtn.style.color = "white";
+        
+        setTimeout(() => {
+            saveBtn.textContent = originalText;
+            saveBtn.style.background = ""; // Reset naar gradient
+            saveBtn.style.color = "";
+            
+            // Sluit het scherm
+            document.getElementById('settingsScreen').classList.add('hidden');
+        }, 1000);
+    }
+
+    // 4. Update de interface direct
+    if (typeof renderChatHeader === 'function') renderChatHeader();
+    if (typeof renderChatList === 'function') renderChatList();
+
+    // 5. Server sync (als je niet in Dev Mode bent)
+    const token = localStorage.getItem("authToken");
+    if (token && token !== "DEV_TOKEN" && typeof API_BASE !== 'undefined') {
+        try {
+            await fetch(`${API_BASE}/update-profile`, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ displayName, bio, pfp: pfpRaw })
+            });
+        } catch (e) { console.warn("Sync failed (offline/dev mode)"); }
+    }
+};
+
+// Veiligheid: Luister ook naar kliks voor het geval 'onclick' niet werkt
+document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.closest('#settingsScreen .contact-action-btn') && t.innerText.includes('Save')) {
+        // Voorkom dubbele aanroep als onclick al bestaat
+        if (!t.onclick) window.saveProfileData();
+    }
+});
+
 
 
 
