@@ -20,6 +20,8 @@ app.use(express.static(path.join(__dirname, "..")));
 
 
 
+
+
 app.use(cors());
 app.use(express.json());
 app.options("*", cors());
@@ -35,6 +37,14 @@ app.use((req, res, next) => {
   res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   next();
 });
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: "register",
+    tag: state.myTag
+  }));
+};
+
 
 /* =========================
    DATABASE
